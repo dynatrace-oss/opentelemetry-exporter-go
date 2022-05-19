@@ -1,6 +1,6 @@
 module github.com/dynatrace/opentelemetry-exporter-go
 
-go 1.18
+go 1.15
 
 require (
 	github.com/davecgh/go-spew v1.1.0 // indirect
