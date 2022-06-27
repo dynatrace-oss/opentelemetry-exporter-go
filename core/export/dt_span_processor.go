@@ -2,7 +2,6 @@ package export
 
 import (
 	"context"
-	"errors"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -14,32 +13,35 @@ import (
 // TODO: move to ODIN config package and replace default values with proper values from config package
 const (
 	defaultUpdateIntervalMs    = 3000
+	defaultKeepAliveIntervalMs = 25000
+	defaultOpenSpanTimeoutMs   = 115 * 60 * 1000
 	defaultForceFlushTimeoutMs = 5000
 )
 
-var flushTimeoutReached = errors.New("flush operation timeout is reached")
-
 type flushContext struct {
-	ctx             context.Context
-	flushOpFinished chan error
+	ctx                  context.Context
+	flushRequestFinished chan struct{}
+	err                  error
 }
 
 type DtSpanProcessor struct {
-	exporter            dtSpanExporter
-	metadata            dtSpanMetadataMap
-	stopExportingCh     chan struct{}
-	stopExportingWait   sync.WaitGroup
-	exportingStopped    int32
-	shutdownOnce        sync.Once
-	flushRequestCh      chan *flushContext
-	periodicSendOpTimer *time.Timer
+	exporter                dtSpanExporter
+	spanWatchlist           dtSpanMetadataMap
+	stopExportingCh         chan struct{}
+	stopExportingWait       sync.WaitGroup
+	exportingStopped        int32
+	shutdownOnce            sync.Once
+	flushRequestCh          chan *flushContext
+	flushRequestLock        sync.Mutex
+	lastFlushRequestContext *flushContext
+	periodicSendOpTimer     *time.Timer
 }
 
 // NewDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
 func NewDtSpanProcessor() *DtSpanProcessor {
 	p := &DtSpanProcessor{
 		exporter:            newDtSpanExporter(),
-		metadata:            newDtSpanMetadataMap(defaultMaxSpansWatchlistSize),
+		spanWatchlist:       newDtSpanMetadataMap(defaultMaxSpansWatchlistSize),
 		stopExportingCh:     make(chan struct{}),
 		exportingStopped:    0,
 		flushRequestCh:      make(chan *flushContext, 1),
@@ -49,13 +51,13 @@ func NewDtSpanProcessor() *DtSpanProcessor {
 	p.stopExportingWait.Add(1)
 	go func() {
 		defer p.stopExportingWait.Done()
-		p.startSpanExportingLoop()
+		p.runSpanExportingLoop()
 	}()
 
 	return p
 }
 
-// OnStart adds a newly created span with a corresponding metadata struct in a processor map for later processing.
+// OnStart adds a newly created span with a corresponding metadata struct to the span watchlist for later processing.
 func (p *DtSpanProcessor) OnStart(_ context.Context, s sdktrace.ReadWriteSpan) {
 	if p.isExportingStopped() {
 		return
@@ -64,7 +66,7 @@ func (p *DtSpanProcessor) OnStart(_ context.Context, s sdktrace.ReadWriteSpan) {
 	log.Printf("DtSpanProcessor: Start span %s", s.Name())
 
 	metadata := newDtSpanMetadata(s)
-	p.metadata.add(s.SpanContext(), metadata)
+	p.spanWatchlist.add(s.SpanContext(), metadata)
 }
 
 // OnEnd adds ended span in a processor map for later processing if it wasn't added upon span start call due to a
@@ -75,10 +77,10 @@ func (p *DtSpanProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
 	}
 
 	log.Printf("DtSpanProcessor: End span %s", s.Name())
-	if !p.metadata.exist(s.SpanContext()) {
-		// most likely span metadata map was full on span start, so try to re-add span
+	if !p.spanWatchlist.exist(s.SpanContext()) {
+		// most likely the span watchlist map was full on span start, so try to re-add span
 		metadata := newDtSpanMetadata(s)
-		p.metadata.add(s.SpanContext(), metadata)
+		p.spanWatchlist.add(s.SpanContext(), metadata)
 	}
 }
 
@@ -97,6 +99,7 @@ func (p *DtSpanProcessor) Shutdown(ctx context.Context) error {
 			close(p.stopExportingCh)
 			p.stopExportingWait.Wait()
 			err = p.exportSpans(ctx, false, exportTypeForceFlush)
+			p.lastFlushRequestContext = nil
 			close(waitShutdown)
 		}()
 
@@ -107,7 +110,7 @@ func (p *DtSpanProcessor) Shutdown(ctx context.Context) error {
 		case <-time.After(time.Millisecond * defaultForceFlushTimeoutMs):
 			log.Println("DtSpanProcessor: Flush operation timeout is reached")
 			cancelFlush()
-			err = flushTimeoutReached
+			err = ctx.Err()
 		case <-ctx.Done():
 			err = ctx.Err()
 			log.Printf("DtSpanProcessor: Context of shutdown operation has been cancelled: %s", err)
@@ -126,43 +129,48 @@ func (p *DtSpanProcessor) ForceFlush(ctx context.Context) error {
 	}
 
 	log.Println("DtSpanProcessor: Force flush")
-	var err error
-
 	ctx, cancelFlush := context.WithCancel(ctx)
 	defer cancelFlush()
 	flushCtx := &flushContext{
-		flushOpFinished: make(chan error),
-		ctx:             ctx,
+		flushRequestFinished: make(chan struct{}),
+		ctx:                  ctx,
+		err:                  nil,
 	}
 
+	p.flushRequestLock.Lock()
 	select {
 	case p.flushRequestCh <- flushCtx:
+		p.lastFlushRequestContext = flushCtx
+		p.flushRequestLock.Unlock()
 		log.Println("DtSpanProcessor: Flush operation is scheduled")
 	default:
-		log.Println("DtSpanProcessor: There is pending flush operation, ignore flush call")
-		return nil
+		lastFlushCtx := p.lastFlushRequestContext
+		p.flushRequestLock.Unlock()
+
+		log.Println("DtSpanProcessor: Wait until the scheduled flush operation is finished")
+		<-lastFlushCtx.ctx.Done()
+		return lastFlushCtx.err
 	}
 
 	select {
 	case <-time.After(time.Millisecond * defaultForceFlushTimeoutMs):
-		log.Println("DtSpanProcessor: Flush operation timeout is reached")
-		err = flushTimeoutReached
-
 		// the flush operation SHOULD abort any in-progress send operation,
 		// thus cancel flush context to inform exporting goroutine
 		cancelFlush()
-	case err = <-flushCtx.flushOpFinished:
+		flushCtx.err = ctx.Err()
+		log.Println("DtSpanProcessor: Flush operation timeout is reached")
+	case <-flushCtx.flushRequestFinished:
 		log.Println("DtSpanProcessor: Flush operation has been finished")
 	case <-ctx.Done():
-		err = ctx.Err()
-		log.Printf("DtSpanProcessor: Context of flush operation has been cancelled: %s", err)
+		flushCtx.err = ctx.Err()
+		log.Printf("DtSpanProcessor: Context of flush operation has been cancelled: %s", ctx.Err())
 	}
 
-	return err
+	return flushCtx.err
 }
 
-// startSpanExportingLoop starts exporting loop to process flush and periodic send operations
-func (p *DtSpanProcessor) startSpanExportingLoop() {
+// runSpanExportingLoop starts exporting loop to process flush and periodic send operations
+func (p *DtSpanProcessor) runSpanExportingLoop() {
 	defer p.periodicSendOpTimer.Stop()
 	for {
 		select {
@@ -183,12 +191,12 @@ func (p *DtSpanProcessor) startSpanExportingLoop() {
 				<-p.periodicSendOpTimer.C
 			}
 
-			err := p.exportSpans(flushCtx.ctx, true, exportTypeForceFlush)
-			if err != nil {
-				log.Printf("DtSpanProcessor: flush send operation has failed: %s", err)
+			flushCtx.err = p.exportSpans(flushCtx.ctx, true, exportTypeForceFlush)
+			if flushCtx.err != nil {
+				log.Printf("DtSpanProcessor: flush send operation has failed: %s", flushCtx.err)
 			}
 
-			flushCtx.flushOpFinished <- err
+			close(flushCtx.flushRequestFinished)
 		}
 	}
 }
@@ -206,7 +214,6 @@ func (p *DtSpanProcessor) exportSpans(ctx context.Context, resetPeriodicSendOpTi
 		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(defaultUpdateIntervalMs))
 	}
 
-	// TODO: depends on span metadata, collect spans that have to be exported and pass them over to DT span exporter
-	err := p.exporter.export(ctx, nil)
-	return err
+	spans := p.spanWatchlist.getSpansToExport()
+	return p.exporter.export(ctx, spans)
 }
