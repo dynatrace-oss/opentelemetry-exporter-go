@@ -9,7 +9,7 @@ import (
 )
 
 type DtConfiguration struct {
-	ClusterId                int
+	ClusterId                int32
 	Tenant                   string
 	AgentId                  int64
 	BaseUrl                  string
@@ -55,7 +55,7 @@ func detectConfiguration(configFileReader configFileReader) (*DtConfiguration, e
 
 	config := &DtConfiguration{
 		AgentId:                  generateAgentId(),
-		ClusterId:                util.GetIntFromEnvWithDefault("DT_CLUSTER_ID", fileConfig.ClusterID),
+		ClusterId:                int32(util.GetIntFromEnvWithDefault("DT_CLUSTER_ID", fileConfig.ClusterID)),
 		Tenant:                   util.GetStringFromEnvWithDefault("DT_TENANT", fileConfig.Tenant),
 		BaseUrl:                  util.GetStringFromEnvWithDefault("DT_CONNECTION_BASE_URL", fileConfig.Connection.BaseUrl),
 		AuthToken:                util.GetStringFromEnvWithDefault("DT_CONNECTION_AUTH_TOKEN", fileConfig.Connection.AuthToken),

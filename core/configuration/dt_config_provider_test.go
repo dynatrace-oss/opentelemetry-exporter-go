@@ -79,7 +79,7 @@ func TestConfigurationViaEnvironment_EmptyConfigFile(t *testing.T) {
 
 	// Config values should be derived from environment variables when available,
 	// even if the config file is empty or does not exist.
-	assert.Equal(t, config.ClusterId, 123)
+	assert.Equal(t, config.ClusterId, int32(123))
 	assert.Equal(t, config.Tenant, "tenant")
 	assert.Equal(t, config.BaseUrl, "http://1111:2222")
 	assert.Equal(t, config.AuthToken, "authToken")
@@ -106,7 +106,7 @@ func TestConfigurationViaEnvironment_NonEmptyConfigFile(t *testing.T) {
 
 	// Config values should be derived from environment variables when available,
 	// even if the values are defined in the config file.
-	assert.Equal(t, config.ClusterId, 123)
+	assert.Equal(t, config.ClusterId, int32(123))
 	assert.Equal(t, config.Tenant, "tenant")
 	assert.Equal(t, config.BaseUrl, "http://1111:2222")
 	assert.Equal(t, config.AuthToken, "authToken")
