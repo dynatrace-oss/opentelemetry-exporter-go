@@ -20,7 +20,8 @@ func GetIntFromEnvWithDefault(key string, defaultValue int) int {
 	if found {
 		intVal, err := strconv.Atoi(str)
 		if err != nil {
-			panic(fmt.Sprintf("Could not parse integer value from environment variable %s", key))
+			fmt.Println(fmt.Sprintf("Could not parse integer value from environment variable %s", key))
+			return defaultValue
 		}
 		return intVal
 	}

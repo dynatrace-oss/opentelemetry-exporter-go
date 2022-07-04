@@ -29,12 +29,12 @@ func TestGetIntFromEnvWithDefault_UseEnvIfSet(t *testing.T) {
 	assert.Equal(t, GetIntFromEnvWithDefault(ENV_KEY, 456), 0)
 }
 
-func TestGetIntFromEnvWithDefault_PanicForInvalidValue(t *testing.T) {
+func TestGetIntFromEnvWithDefault_UseDefaultForInvalidValue(t *testing.T) {
 	t.Setenv(ENV_KEY, "foo")
-	assert.Panics(t, func() { GetIntFromEnvWithDefault(ENV_KEY, 456) })
+	assert.Equal(t, GetIntFromEnvWithDefault(ENV_KEY, 456), 456)
 
 	t.Setenv(ENV_KEY, "")
-	assert.Panics(t, func() { GetIntFromEnvWithDefault(ENV_KEY, 456) })
+	assert.Equal(t, GetIntFromEnvWithDefault(ENV_KEY, 456), 456)
 }
 
 func TestGetIntFromEnvWithDefault_UseDefault(t *testing.T) {
