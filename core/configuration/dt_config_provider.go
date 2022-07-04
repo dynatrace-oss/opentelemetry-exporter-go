@@ -39,7 +39,7 @@ type ConfigurationProvider struct {
 // Will return a cached configuration when called multiple times.
 func (cp *ConfigurationProvider) GetConfiguration() (*DtConfiguration, error) {
 	if cp.configuration == nil {
-		config, err := detectConfiguration(&jsonConfigFileReader{})
+		config, err := loadConfiguration(&jsonConfigFileReader{})
 		if err != nil {
 			return nil, err
 		}
@@ -50,8 +50,11 @@ func (cp *ConfigurationProvider) GetConfiguration() (*DtConfiguration, error) {
 
 // Consolidates configuration provided by environment variables and by file into a single struct.
 // Configuration provided by environment variables overrides configuration provided by file.
-func detectConfiguration(configFileReader configFileReader) (*DtConfiguration, error) {
-	fileConfig, _ := configFileReader.ReadConfigFromFile()
+func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, error) {
+	fileConfig, err := configFileReader.ReadConfigFromFile()
+	if err != nil {
+		fmt.Println("Could not read configuration file: " + err.Error())
+	}
 
 	config := &DtConfiguration{
 		AgentId:                  generateAgentId(),

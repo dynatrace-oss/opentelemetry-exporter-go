@@ -56,7 +56,7 @@ func createMockConfigFileReaderWithCompleteConfig() *mockConfigFileReader {
 
 func TestDefaultConfigValues(t *testing.T) {
 	mockConfigFileReader := createMockConfigFileReaderWithRequiredFields()
-	config, _ := detectConfiguration(mockConfigFileReader)
+	config, _ := loadConfiguration(mockConfigFileReader)
 	// If these values are not explicitly defined in the config, they should
 	// have these default values.
 	assert.Equal(t, config.LoggingDestination, LoggingDestination_Off)
@@ -75,7 +75,7 @@ func TestConfigurationViaEnvironment_EmptyConfigFile(t *testing.T) {
 	t.Setenv("DT_LOGGING_GO_FLAGS", "flag1=true,flag2=false")
 
 	mockConfigFileReader := createMockConfigFileReader(fileConfig{})
-	config, _ := detectConfiguration(mockConfigFileReader)
+	config, _ := loadConfiguration(mockConfigFileReader)
 
 	// Config values should be derived from environment variables when available,
 	// even if the config file is empty or does not exist.
@@ -102,7 +102,7 @@ func TestConfigurationViaEnvironment_NonEmptyConfigFile(t *testing.T) {
 	t.Setenv("DT_LOGGING_GO_FLAGS", "flag1=true,flag2=false")
 
 	mockConfigFileReader := createMockConfigFileReaderWithCompleteConfig()
-	config, _ := detectConfiguration(mockConfigFileReader)
+	config, _ := loadConfiguration(mockConfigFileReader)
 
 	// Config values should be derived from environment variables when available,
 	// even if the values are defined in the config file.
