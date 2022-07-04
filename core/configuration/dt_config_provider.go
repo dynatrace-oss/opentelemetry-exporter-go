@@ -116,5 +116,5 @@ func validateConfiguration(config *DtConfiguration) {
 }
 
 func generateAgentId() int64 {
-	return rand.Int63()
+	return int64(rand.Uint64())
 }
