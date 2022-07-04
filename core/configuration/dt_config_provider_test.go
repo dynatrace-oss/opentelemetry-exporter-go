@@ -41,9 +41,6 @@ func createMockConfigFileReaderWithCompleteConfig() *mockConfigFileReader {
 
 	fileConfig.RUM.ClientIpHeaders = []string{"ip_header_1", "ip_header_2", "ip_header_3"}
 
-	fileConfig.OpenTelemetry.DisabledSensors = []string{"sensor_1", "sensor_2", "sensor_3"}
-	fileConfig.OpenTelemetry.OverrideMaxApiVersion = "2.3.4"
-
 	fileConfig.Testability.SpanProcessingIntervalMs = 999
 	fileConfig.Testability.KeepAliveIntervalMs = 1000
 	fileConfig.Testability.MetricCollectionIntervalMs = 2000

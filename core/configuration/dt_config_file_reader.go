@@ -3,7 +3,6 @@ package configuration
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 )
 
 type fileConfig struct {
@@ -17,10 +16,6 @@ type fileConfig struct {
 	}
 	RUM struct {
 		ClientIpHeaders []string
-	}
-	OpenTelemetry struct {
-		DisabledSensors       []string
-		OverrideMaxApiVersion string
 	}
 	Testability struct {
 		SpanProcessingIntervalMs   int
@@ -46,13 +41,10 @@ type configFileReader interface {
 type jsonConfigFileReader struct {
 }
 
-// Looks for a config file "dtconfig.json" in the executable's directory and attempts to parse it.
+// Looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
 // Returns an error if the file can't be read or the parsing fails.
 func (j *jsonConfigFileReader) ReadConfigFromFile() (fileConfig, error) {
-	cwd, _ := os.Getwd()
-
-	path := filepath.Join(cwd, "dtconfig.json")
-	fileData, err := os.ReadFile(path)
+	fileData, err := os.ReadFile("./dtconfig.json")
 	if err != nil {
 		return fileConfig{}, err
 	}
