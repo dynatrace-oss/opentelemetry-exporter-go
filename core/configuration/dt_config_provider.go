@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"net/url"
 
-	"github.com/dynatrace/opentelemetry-exporter-go/core/configuration/util"
+	"github.com/dynatrace/opentelemetry-exporter-go/core/configuration/internal/util"
 )
 
 type DtConfiguration struct {
