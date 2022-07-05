@@ -53,7 +53,7 @@ func TestGetBoolFromEnvWithDefault_UseEnvIfSet(t *testing.T) {
 	t.Setenv(ENV_KEY, "FALSE")
 	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, true), false)
 
-	t.Setenv(ENV_KEY, "fAlSe")
+	t.Setenv(ENV_KEY, "False")
 	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, true), false)
 
 	t.Setenv(ENV_KEY, "true")
@@ -61,6 +61,20 @@ func TestGetBoolFromEnvWithDefault_UseEnvIfSet(t *testing.T) {
 
 	t.Setenv(ENV_KEY, "1")
 	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, false), true)
+}
+
+func TestGetBoolFromEnvWithDefault_UseDefaultIfInvalidValue(t *testing.T) {
+	t.Setenv(ENV_KEY, "foo")
+	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, true), true)
+	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, false), false)
+
+	t.Setenv(ENV_KEY, "fAlSe")
+	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, true), true)
+	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, false), false)
+
+	t.Setenv(ENV_KEY, "tRuE")
+	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, false), false)
+	assert.Equal(t, GetBoolFromEnvWithDefault(ENV_KEY, true), true)
 }
 
 func TestGetBoolFromEnvWithDefault_UseDefault(t *testing.T) {

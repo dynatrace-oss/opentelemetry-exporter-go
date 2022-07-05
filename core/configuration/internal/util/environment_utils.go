@@ -28,14 +28,14 @@ func GetIntFromEnvWithDefault(key string, defaultValue int) int {
 
 func GetBoolFromEnvWithDefault(key string, defaultValue bool) bool {
 	if str, found := os.LookupEnv(key); found {
-		return toBool(str)
+		b, err := strconv.ParseBool(str)
+		if err != nil {
+			fmt.Printf("Could not parse boolean value from environment variable %s\n", key);
+			return defaultValue
+		}
+		return b
 	}
 	return defaultValue
-}
-
-func toBool(value string) bool {
-	lowercaseValue := strings.ToLower(value)
-	return lowercaseValue != "false" && lowercaseValue != "0"
 }
 
 func GetStringSliceFromEnvWithDefault(key string, defaultValue []string) []string {
