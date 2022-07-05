@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -70,7 +71,9 @@ func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, err
 	}
 
 	setDefaultConfigValues(config)
-	validateConfiguration(config)
+	if validationErr := validateConfiguration(config); validationErr != nil {
+		return nil, validationErr
+	}
 	return config, nil
 }
 
@@ -84,35 +87,37 @@ func setDefaultConfigValues(config *DtConfiguration) {
 	}
 }
 
-func validateConfiguration(config *DtConfiguration) {
+func validateConfiguration(config *DtConfiguration) error {
 	if config.Tenant == "" {
-		panic("Tenant must be specified in configuration.")
+		return errors.New("Tenant must be specified in configuration.")
 	}
 
 	if config.ClusterId == 0 {
-		panic("ClusterId must be specified in configuration.")
+		return errors.New("ClusterId must be specified in configuration.")
 	}
 
 	if config.BaseUrl == "" {
-		panic("BaseUrl must be specified in configuration.")
+		return errors.New("BaseUrl must be specified in configuration.")
 	} else {
 		_, err := url.ParseRequestURI(config.BaseUrl)
 		if err != nil {
-			panic("BaseUrl does does not have valid format.")
+			return errors.New("BaseUrl does does not have valid format.")
 		}
 	}
 
 	if config.AuthToken == "" {
-		panic("AuthToken must be specified in configuration.")
+		return errors.New("AuthToken must be specified in configuration.")
 	}
 
 	switch config.LoggingDestination {
 	case LoggingDestination_Off, LoggingDestination_Stdout, LoggingDestination_Stderr:
 		// valid, do nothing
 	default:
-		panic(fmt.Sprintf("LoggingDestionation must be one of: %s, %s, %s",
-			LoggingDestination_Off, LoggingDestination_Stdout, LoggingDestination_Stderr))
+		return fmt.Errorf("LoggingDestionation must be one of: %s, %s, %s",
+			LoggingDestination_Off, LoggingDestination_Stdout, LoggingDestination_Stderr)
 	}
+
+	return nil
 }
 
 func generateAgentId() int64 {
