@@ -30,13 +30,14 @@ const (
 	LoggingDestination_Stderr LoggingDestination = "stderr"
 )
 
+// ConfigurationProvider 
 // Usage: create an instance of ConfigurationProvider and call GetConfiguration() to get the configuration.
 // You may pass around the ConfigurationProvider or the returned DtConfiguration to other parts of the application.
 type ConfigurationProvider struct {
 	configuration *DtConfiguration
 }
 
-// Returns configuration from environment variables or from file.
+// GetConfiguration returns configuration from environment variables or from file.
 // Will return a cached configuration when called multiple times.
 func (cp *ConfigurationProvider) GetConfiguration() (*DtConfiguration, error) {
 	if cp.configuration == nil {
@@ -49,7 +50,7 @@ func (cp *ConfigurationProvider) GetConfiguration() (*DtConfiguration, error) {
 	return cp.configuration, nil
 }
 
-// Consolidates configuration provided by environment variables and by file into a single struct.
+// loadConfiguration consolidates configuration provided by environment variables and by file into a single struct.
 // Configuration provided by environment variables overrides configuration provided by file.
 func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, error) {
 	fileConfig, err := configFileReader.ReadConfigFromFile()

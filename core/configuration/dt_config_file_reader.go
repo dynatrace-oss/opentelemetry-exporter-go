@@ -41,7 +41,7 @@ type configFileReader interface {
 type jsonConfigFileReader struct {
 }
 
-// Looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
+// ReadConfigFromFile Looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
 // Returns an error if the file can't be read or the parsing fails.
 func (j *jsonConfigFileReader) ReadConfigFromFile() (fileConfig, error) {
 	fileData, err := os.ReadFile("./dtconfig.json")
