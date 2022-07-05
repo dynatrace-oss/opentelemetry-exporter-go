@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,15 +65,16 @@ func TestDefaultConfigValues(t *testing.T) {
 }
 
 func TestConfigurationViaEnvironment_EmptyConfigFile(t *testing.T) {
-	t.Setenv("DT_CLUSTER_ID", "123")
-	t.Setenv("DT_TENANT", "tenant")
-	t.Setenv("DT_CONNECTION_BASE_URL", "http://1111:2222")
-	t.Setenv("DT_CONNECTION_AUTH_TOKEN", "authToken")
-	t.Setenv("DT_TESTABILITY_SPAN_PROCESSING_INTERVAL_MS", "999")
-	t.Setenv("DT_RUM_CLIENT_IP_HEADERS", "header1:header2")
-	t.Setenv("DT_DEBUG_ADD_STACK_ON_START", "true")
-	t.Setenv("DT_LOGGING_DESTINATION", "stdout")
-	t.Setenv("DT_LOGGING_GO_FLAGS", "flag1=true,flag2=false")
+	defer os.Clearenv()
+	os.Setenv("DT_CLUSTER_ID", "123")
+	os.Setenv("DT_TENANT", "tenant")
+	os.Setenv("DT_CONNECTION_BASE_URL", "http://1111:2222")
+	os.Setenv("DT_CONNECTION_AUTH_TOKEN", "authToken")
+	os.Setenv("DT_TESTABILITY_SPAN_PROCESSING_INTERVAL_MS", "999")
+	os.Setenv("DT_RUM_CLIENT_IP_HEADERS", "header1:header2")
+	os.Setenv("DT_DEBUG_ADD_STACK_ON_START", "true")
+	os.Setenv("DT_LOGGING_DESTINATION", "stdout")
+	os.Setenv("DT_LOGGING_GO_FLAGS", "flag1=true,flag2=false")
 
 	mockConfigFileReader := createMockConfigFileReader(fileConfig{})
 	config, _ := loadConfiguration(mockConfigFileReader)
@@ -91,15 +93,16 @@ func TestConfigurationViaEnvironment_EmptyConfigFile(t *testing.T) {
 }
 
 func TestConfigurationViaEnvironment_NonEmptyConfigFile(t *testing.T) {
-	t.Setenv("DT_CLUSTER_ID", "123")
-	t.Setenv("DT_TENANT", "tenant")
-	t.Setenv("DT_CONNECTION_BASE_URL", "http://1111:2222")
-	t.Setenv("DT_CONNECTION_AUTH_TOKEN", "authToken")
-	t.Setenv("DT_TESTABILITY_SPAN_PROCESSING_INTERVAL_MS", "999")
-	t.Setenv("DT_RUM_CLIENT_IP_HEADERS", "header1:header2")
-	t.Setenv("DT_DEBUG_ADD_STACK_ON_START", "true")
-	t.Setenv("DT_LOGGING_DESTINATION", "stdout")
-	t.Setenv("DT_LOGGING_GO_FLAGS", "flag1=true,flag2=false")
+	defer os.Clearenv()
+	os.Setenv("DT_CLUSTER_ID", "123")
+	os.Setenv("DT_TENANT", "tenant")
+	os.Setenv("DT_CONNECTION_BASE_URL", "http://1111:2222")
+	os.Setenv("DT_CONNECTION_AUTH_TOKEN", "authToken")
+	os.Setenv("DT_TESTABILITY_SPAN_PROCESSING_INTERVAL_MS", "999")
+	os.Setenv("DT_RUM_CLIENT_IP_HEADERS", "header1:header2")
+	os.Setenv("DT_DEBUG_ADD_STACK_ON_START", "true")
+	os.Setenv("DT_LOGGING_DESTINATION", "stdout")
+	os.Setenv("DT_LOGGING_GO_FLAGS", "flag1=true,flag2=false")
 
 	mockConfigFileReader := createMockConfigFileReaderWithCompleteConfig()
 	config, _ := loadConfiguration(mockConfigFileReader)
