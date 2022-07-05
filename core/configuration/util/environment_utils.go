@@ -8,16 +8,14 @@ import (
 )
 
 func GetStringFromEnvWithDefault(key, defaultValue string) string {
-	str, found := os.LookupEnv(key)
-	if found {
+	if str, found := os.LookupEnv(key); found {
 		return str
 	}
 	return defaultValue
 }
 
 func GetIntFromEnvWithDefault(key string, defaultValue int) int {
-	str, found := os.LookupEnv(key)
-	if found {
+	if str, found := os.LookupEnv(key); found {
 		intVal, err := strconv.Atoi(str)
 		if err != nil {
 			fmt.Printf("Could not parse integer value from environment variable %s\n", key);
@@ -29,8 +27,7 @@ func GetIntFromEnvWithDefault(key string, defaultValue int) int {
 }
 
 func GetBoolFromEnvWithDefault(key string, defaultValue bool) bool {
-	str, found := os.LookupEnv(key)
-	if found {
+	if str, found := os.LookupEnv(key); found {
 		return toBool(str)
 	}
 	return defaultValue
@@ -42,8 +39,7 @@ func toBool(value string) bool {
 }
 
 func GetStringSliceFromEnvWithDefault(key string, defaultValue []string) []string {
-	str, found := os.LookupEnv(key)
-	if found {
+	if str, found := os.LookupEnv(key); found {
 		return strings.Split(str, ":")
 	}
 	return defaultValue
