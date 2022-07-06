@@ -33,9 +33,12 @@ const (
 // ConfigurationProvider 
 // Usage: create an instance of ConfigurationProvider and call GetConfiguration() to get the configuration.
 // You may pass around the ConfigurationProvider or the returned DtConfiguration to other parts of the application.
+// You may also use the GlobalConfigurationProvider singleton instead of creating your own instance.
 type ConfigurationProvider struct {
 	configuration *DtConfiguration
 }
+
+var GlobalConfigurationProvider  = &ConfigurationProvider{}
 
 // GetConfiguration returns configuration from environment variables or from file.
 // Will return a cached configuration when called multiple times.
