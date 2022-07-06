@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 )
@@ -41,15 +42,21 @@ type configFileReader interface {
 type jsonConfigFileReader struct {
 }
 
-// ReadConfigFromFile Looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
+// ReadConfigFromFile looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
 // Returns an error if the file can't be read or the parsing fails.
 func (j *jsonConfigFileReader) ReadConfigFromFile() (fileConfig, error) {
-	fileData, err := ioutil.ReadFile("./dtconfig.json")
+	return j.ReadConfigFromFileByPath("./dtconfig.json")
+}
+
+func (j *jsonConfigFileReader) ReadConfigFromFileByPath(filePath string) (fileConfig, error) {
+	fileData, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fileConfig{}, err
 	}
 
 	var config fileConfig
-	err = json.Unmarshal(fileData, &config)
+	decoder := json.NewDecoder(bytes.NewReader(fileData))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&config)
 	return config, err
 }

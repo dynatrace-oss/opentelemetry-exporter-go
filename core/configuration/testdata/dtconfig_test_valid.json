@@ -1,0 +1,30 @@
+{
+    "AgentActive": true,
+    "ClusterID": 12345,
+    "Tenant": "schnitzel",
+    "Connection": {
+        "AuthToken": "dt0a01.schnitzel.xsdffdedr",
+        "BaseUrl": "https://ag.xyz.com",
+        "Proxy": "https://user:pass@foo.bar.com:8081"
+    },
+    "RUM": {
+        "ClientIpHeaders": [
+            "x-forwarded-for"
+        ]
+    },
+    "Testability": {
+        "SpanProcessingIntervalMs": 3000,
+        "KeepAliveIntervalMs": 30000,
+        "MetricCollectionIntervalMs": 10000,
+        "MetricCollectionsPerExport": 6
+    },
+    "Logging": {
+        "Destination": "stderr",
+        "Go": {
+            "Flags": "Exporter=true,Propagator=false"
+        }
+    },
+    "Debug": {
+        "AddStackOnStart": true
+    }
+}
