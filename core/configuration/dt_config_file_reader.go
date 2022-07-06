@@ -36,7 +36,7 @@ type fileConfig struct {
 }
 
 type configFileReader interface {
-	ReadConfigFromFile() (fileConfig, error)
+	readConfigFromFile() (fileConfig, error)
 }
 
 type jsonConfigFileReader struct {
@@ -44,11 +44,11 @@ type jsonConfigFileReader struct {
 
 // ReadConfigFromFile looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
 // Returns an error if the file can't be read or the parsing fails.
-func (j *jsonConfigFileReader) ReadConfigFromFile() (fileConfig, error) {
-	return j.ReadConfigFromFileByPath("./dtconfig.json")
+func (j *jsonConfigFileReader) readConfigFromFile() (fileConfig, error) {
+	return j.readConfigFromFileByPath("./dtconfig.json")
 }
 
-func (j *jsonConfigFileReader) ReadConfigFromFileByPath(filePath string) (fileConfig, error) {
+func (j *jsonConfigFileReader) readConfigFromFileByPath(filePath string) (fileConfig, error) {
 	fileData, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fileConfig{}, err

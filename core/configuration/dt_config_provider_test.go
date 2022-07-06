@@ -11,7 +11,7 @@ type mockConfigFileReader struct {
 	fileConfig fileConfig
 }
 
-func (m *mockConfigFileReader) ReadConfigFromFile() (fileConfig, error) {
+func (m *mockConfigFileReader) readConfigFromFile() (fileConfig, error) {
 	return m.fileConfig, nil
 }
 

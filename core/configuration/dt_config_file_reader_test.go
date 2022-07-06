@@ -8,31 +8,31 @@ import (
 
 func TestJsonConfigFileReader_NoErrorForValidFile(t *testing.T) {
 	reader := jsonConfigFileReader{}
-	_, err := reader.ReadConfigFromFileByPath("./testdata/dtconfig_test_valid.json")
+	_, err := reader.readConfigFromFileByPath("./testdata/dtconfig_test_valid.json")
 	assert.NoError(t, err)
 }
 
 func TestJsonConfigFileReader_ErrorForInvalidFile(t *testing.T) {
 	reader := jsonConfigFileReader{}
-	_, err := reader.ReadConfigFromFileByPath("./testdata/dtconfig_test_invalid.json")
+	_, err := reader.readConfigFromFileByPath("./testdata/dtconfig_test_invalid.json")
 	assert.Error(t, err)
 }
 
 func TestJsonConfigFileReader_ErrorForMissingFile(t *testing.T) {
 	reader := jsonConfigFileReader{}
-	_, err := reader.ReadConfigFromFileByPath("./testdata/dtconfig_test_missing.json")
+	_, err := reader.readConfigFromFileByPath("./testdata/dtconfig_test_missing.json")
 	assert.Error(t, err)
 }
 
 func TestJsonConfigFileReader_ErrorForEmptyFile(t *testing.T) {
 	reader := jsonConfigFileReader{}
-	_, err := reader.ReadConfigFromFileByPath("./testdata/dtconfig_test_empty.json")
+	_, err := reader.readConfigFromFileByPath("./testdata/dtconfig_test_empty.json")
 	assert.Error(t, err)
 }
 
 func TestJsonConfigFileReader_ValidFileIsCorrectlyDeserialized(t *testing.T) {
 	reader := jsonConfigFileReader{}
-	config, err := reader.ReadConfigFromFileByPath("./testdata/dtconfig_test_valid.json")
+	config, err := reader.readConfigFromFileByPath("./testdata/dtconfig_test_valid.json")
 
 	assert.NoError(t, err)
 
