@@ -2,8 +2,9 @@ package export
 
 import (
 	"context"
-	"log"
 	"time"
+
+	"core/internal/logger"
 )
 
 type exportType int
@@ -18,16 +19,20 @@ type dtSpanExporter interface {
 	export(ctx context.Context, spans map[spanKey]*dtSpanMetadata) error
 }
 
-type dtSpanExporterImpl struct{}
+type dtSpanExporterImpl struct {
+	logger *logger.ComponentLogger
+}
 
 func newDtSpanExporter() dtSpanExporter {
-	return &dtSpanExporterImpl{}
+	return &dtSpanExporterImpl{
+		logger: logger.NewComponentLogger("SpanExporter"),
+	}
 }
 
 func (e *dtSpanExporterImpl) export(_ context.Context, spans map[spanKey]*dtSpanMetadata) error {
-	log.Printf("DtSpanExporter: Nums spans to export: %d", len(spans))
+	e.logger.Debugf("Number of spans to export: %d", len(spans))
 	for _, v := range spans {
-		log.Printf("DtSpanExporter: Exporting span: %s", v.span.Name())
+		e.logger.Debugf("Exporting span: %s", v.span.Name())
 	}
 
 	// emulate export operation
