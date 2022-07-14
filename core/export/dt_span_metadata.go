@@ -1,7 +1,6 @@
 package export
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -137,16 +136,16 @@ func newDtSpanMetadataMap(maxSpansWatchlistSize int) dtSpanMetadataMap {
 	}
 }
 
-func (p *dtSpanMetadataMap) add(spanContext trace.SpanContext, metadata *dtSpanMetadata) {
+func (p *dtSpanMetadataMap) add(spanContext trace.SpanContext, metadata *dtSpanMetadata) bool {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	if len(p.spans) >= p.maxSpans {
-		log.Println("DtSpanMetaDataMap: spans map is full, could not add new span: " + metadata.span.Name())
-		return
+		return false
 	}
 
 	p.spans[getSpanKey(spanContext)] = metadata
+	return true
 }
 
 func (p *dtSpanMetadataMap) remove(spanContext trace.SpanContext) {
