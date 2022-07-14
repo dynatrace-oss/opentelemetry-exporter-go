@@ -6,12 +6,13 @@ import (
 	"math/rand"
 	"net/url"
 
-	"github.com/dynatrace/opentelemetry-exporter-go/core/configuration/internal/util"
+	"core/configuration/internal/util"
 )
 
 type DtConfiguration struct {
 	ClusterId                int32
 	Tenant                   string
+	TenantID                 int32
 	AgentId                  int64
 	BaseUrl                  string
 	AuthToken                string
@@ -78,6 +79,9 @@ func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, err
 	if validationErr := validateConfiguration(config); validationErr != nil {
 		return nil, validationErr
 	}
+	
+	config.TenantID = util.CalculateTenantId(config.Tenant)
+
 	return config, nil
 }
 
