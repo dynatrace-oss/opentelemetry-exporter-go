@@ -15,7 +15,7 @@ func TestDtSpanMetadataSkipNewNonEndedSpan(t *testing.T) {
 	tr := otel.Tracer("SDK Tracer")
 
 	_, nonEndedSpan := tr.Start(context.Background(), "Span A")
-	spanMetadata := newDtSpanMetadata(nonEndedSpan.(sdktrace.ReadOnlySpan))
+	spanMetadata := newDtSpanMetadata(defaultTransmitOptions, nonEndedSpan.(sdktrace.ReadOnlySpan))
 
 	require.Equal(t, spanMetadata.prepareSend(time.Now().UnixNano()/int64(time.Millisecond)), prepareResultSkip)
 	require.EqualValues(t, spanMetadata.lastSentMs, 0)
@@ -28,7 +28,7 @@ func TestDtSpanMetadataSendNonEndedSpanOlderThanUpdateInterval(t *testing.T) {
 	tr := otel.Tracer("SDK Tracer")
 
 	_, nonEndedSpan := tr.Start(context.Background(), "Span A")
-	spanMetadata := newDtSpanMetadata(nonEndedSpan.(sdktrace.ReadOnlySpan))
+	spanMetadata := newDtSpanMetadata(defaultTransmitOptions, nonEndedSpan.(sdktrace.ReadOnlySpan))
 
 	// new non-ended span must be sent if it is older than update interval
 	sendTime := (time.Now().UnixNano() / int64(time.Millisecond)) + spanMetadata.options.updateIntervalMs
@@ -45,7 +45,7 @@ func TestDtSpanMetadataSendEndedSpan(t *testing.T) {
 	_, nonEndedSpan := tr.Start(context.Background(), "Span A")
 	nonEndedSpan.End()
 
-	spanMetadata := newDtSpanMetadata(nonEndedSpan.(sdktrace.ReadOnlySpan))
+	spanMetadata := newDtSpanMetadata(defaultTransmitOptions, nonEndedSpan.(sdktrace.ReadOnlySpan))
 
 	sendTime := time.Now().UnixNano() / int64(time.Millisecond)
 	require.Equal(t, spanMetadata.prepareSend(sendTime), prepareResultSend)
@@ -59,7 +59,7 @@ func TestDtSpanMetadataDropNonEndedOutdatedSpan(t *testing.T) {
 	tr := otel.Tracer("SDK Tracer")
 
 	_, nonEndedSpan := tr.Start(context.Background(), "Span A")
-	spanMetadata := newDtSpanMetadata(nonEndedSpan.(sdktrace.ReadOnlySpan))
+	spanMetadata := newDtSpanMetadata(defaultTransmitOptions, nonEndedSpan.(sdktrace.ReadOnlySpan))
 
 	// non-ended span older than openSpanTimeout interval must be dropped
 	sendTime := (time.Now().UnixNano() / int64(time.Millisecond)) + spanMetadata.options.openSpanTimeoutMs
@@ -74,7 +74,7 @@ func TestDtSpanMetadataSendSpanAfterKeepAliveInterval(t *testing.T) {
 	tr := otel.Tracer("SDK Tracer")
 
 	_, nonEndedSpan := tr.Start(context.Background(), "Span A")
-	spanMetadata := newDtSpanMetadata(nonEndedSpan.(sdktrace.ReadOnlySpan))
+	spanMetadata := newDtSpanMetadata(defaultTransmitOptions, nonEndedSpan.(sdktrace.ReadOnlySpan))
 
 	// new non-ended span must be sent if it is older than update interval
 	sendTime := (time.Now().UnixNano() / int64(time.Millisecond)) + spanMetadata.options.updateIntervalMs

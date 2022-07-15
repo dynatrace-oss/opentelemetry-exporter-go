@@ -2,6 +2,7 @@ package export
 
 import (
 	"context"
+	"core/configuration"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -26,6 +27,7 @@ type flushContext struct {
 
 type DtSpanProcessor struct {
 	exporter                dtSpanExporter
+	enricher                dtSpanEnricher
 	spanWatchlist           dtSpanMetadataMap
 	stopExportingCh         chan struct{}
 	stopExportingWait       sync.WaitGroup
@@ -35,10 +37,13 @@ type DtSpanProcessor struct {
 	flushRequestLock        sync.Mutex
 	lastFlushRequestContext *flushContext
 	periodicSendOpTimer     *time.Timer
+
+	clusterId int32
+	tenantId  int32
 }
 
 // NewDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
-func NewDtSpanProcessor() *DtSpanProcessor {
+func NewDtSpanProcessor(config *configuration.DtConfiguration) *DtSpanProcessor {
 	p := &DtSpanProcessor{
 		exporter:            newDtSpanExporter(),
 		spanWatchlist:       newDtSpanMetadataMap(defaultMaxSpansWatchlistSize),
@@ -46,6 +51,8 @@ func NewDtSpanProcessor() *DtSpanProcessor {
 		exportingStopped:    0,
 		flushRequestCh:      make(chan *flushContext, 1),
 		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(defaultUpdateIntervalMs)),
+		clusterId:           config.ClusterId,
+		tenantId:            config.TenantID,
 	}
 
 	p.stopExportingWait.Add(1)
@@ -57,6 +64,12 @@ func NewDtSpanProcessor() *DtSpanProcessor {
 	return p
 }
 
+var defaultTransmitOptions *transmitOptions = &transmitOptions{
+	updateIntervalMs:    3000,
+	keepAliveIntervalMs: 25000,
+	openSpanTimeoutMs:   115 * 60 * 1000,
+}
+
 // OnStart adds a newly created span with a corresponding metadata struct to the span watchlist for later processing.
 func (p *DtSpanProcessor) OnStart(_ context.Context, s sdktrace.ReadWriteSpan) {
 	if p.isExportingStopped() {
@@ -65,7 +78,7 @@ func (p *DtSpanProcessor) OnStart(_ context.Context, s sdktrace.ReadWriteSpan) {
 
 	log.Printf("DtSpanProcessor: Start span %s", s.Name())
 
-	metadata := newDtSpanMetadata(s)
+	metadata := p.enricher.CreateSpanMetaData(s, defaultTransmitOptions, p.clusterId, p.tenantId, &p.spanWatchlist)
 	p.spanWatchlist.add(s.SpanContext(), metadata)
 }
 
@@ -78,8 +91,10 @@ func (p *DtSpanProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
 
 	log.Printf("DtSpanProcessor: End span %s", s.Name())
 	if !p.spanWatchlist.exist(s.SpanContext()) {
-		// most likely the span watchlist map was full on span start, so try to re-add span
-		metadata := newDtSpanMetadata(s)
+		// Most likely the span watchlist map was full on span start, so try to re-add span
+		// We must cast the span to a ReadWriteSpan in order to be able to set attributes in the SpanEnricher.
+		rwSpan := s.(sdktrace.ReadWriteSpan)
+		metadata := p.enricher.CreateSpanMetaData(rwSpan, defaultTransmitOptions, p.clusterId, p.tenantId, &p.spanWatchlist)
 		p.spanWatchlist.add(s.SpanContext(), metadata)
 	}
 }

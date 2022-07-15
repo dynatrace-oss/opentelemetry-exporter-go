@@ -2,6 +2,7 @@ package export
 
 import (
 	"context"
+	"core/configuration"
 	"fmt"
 	"log"
 	"sync"
@@ -56,8 +57,12 @@ func generateSpans(tr trace.Tracer, option spanGeneratorOption) {
 	wg.Wait()
 }
 
+func createSpanProcessor() *DtSpanProcessor {
+	return NewDtSpanProcessor(&configuration.DtConfiguration{})
+}
+
 func TestDtSpanProcessorStartSpans(t *testing.T) {
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, len(p.spanWatchlist.spans))
 
@@ -79,7 +84,7 @@ func TestDtSpanProcessorStartSpans(t *testing.T) {
 }
 
 func TestDtSpanProcessorShutdown(t *testing.T) {
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	require.Zero(t, p.exportingStopped)
 
 	err := p.Shutdown(context.Background())
@@ -88,7 +93,7 @@ func TestDtSpanProcessorShutdown(t *testing.T) {
 }
 
 func TestDtSpanProcessorPostShutdown(t *testing.T) {
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, len(p.spanWatchlist.spans))
 
@@ -112,7 +117,7 @@ func TestDtSpanProcessorShutdownCancelContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	require.Zero(t, p.exportingStopped)
 
 	err := p.Shutdown(ctx)
@@ -126,7 +131,7 @@ func TestDtSpanProcessorShutdownTimeoutReached(t *testing.T) {
 		numIterations:       20,
 	}
 
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
@@ -145,7 +150,7 @@ func TestDtSpanProcessorShutdownTimeoutReached(t *testing.T) {
 }
 
 func TestDtSpanProcessorForceFlush(t *testing.T) {
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, len(p.spanWatchlist.spans))
 
@@ -170,7 +175,7 @@ func TestDtSpanProcessorForceFlush(t *testing.T) {
 }
 
 func TestDtSpanProcessorForceFlushNonEndedSpan(t *testing.T) {
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, len(p.spanWatchlist.spans))
 
@@ -203,7 +208,7 @@ func TestDtSpanProcessorForceFlushCancelContext(t *testing.T) {
 		numIterations:       20,
 	}
 
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
@@ -228,7 +233,7 @@ func TestDtSpanProcessorForceFlushTimeoutReached(t *testing.T) {
 		numIterations:       20,
 	}
 
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
@@ -253,7 +258,7 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 		numIterations:       4,
 	}
 
-	p := NewDtSpanProcessor()
+	p := createSpanProcessor()
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, len(p.spanWatchlist.spans))

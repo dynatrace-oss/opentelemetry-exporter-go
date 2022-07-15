@@ -7,6 +7,8 @@ import (
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+
+	"core/fw4"
 )
 
 // TODO: move to ODIN config package and replace default values with proper values from config package
@@ -40,6 +42,12 @@ type dtSpanMetadata struct {
 	seqNumber   int32
 	options     *transmitOptions
 	span        sdktrace.ReadOnlySpan
+
+	fw4Tag              *fw4.Fw4Tag
+	lastPropagationTime time.Time
+	tenantParentSpanId  trace.SpanID
+	serverId            int64
+	xDtc                string
 }
 
 type transmitOptions struct {
@@ -48,19 +56,14 @@ type transmitOptions struct {
 	openSpanTimeoutMs   int64
 }
 
-func newDtSpanMetadata(span sdktrace.ReadOnlySpan) *dtSpanMetadata {
+func newDtSpanMetadata(transmitOptions *transmitOptions, span sdktrace.ReadOnlySpan) *dtSpanMetadata {
 	return &dtSpanMetadata{
 		sendState:   sendStateNew,
 		firstSeenMs: time.Now().UnixNano() / int64(time.Millisecond),
 		lastSentMs:  0,
 		seqNumber:   -1,
-		// TODO: use value from config package
-		options: &transmitOptions{
-			updateIntervalMs:    defaultUpdateIntervalMs,
-			keepAliveIntervalMs: defaultKeepAliveIntervalMs,
-			openSpanTimeoutMs:   defaultOpenSpanTimeoutMs,
-		},
-		span: span,
+		options: transmitOptions,
+		span:    span,
 	}
 }
 
@@ -135,6 +138,13 @@ func newDtSpanMetadataMap(maxSpansWatchlistSize int) dtSpanMetadataMap {
 		lock:     sync.Mutex{},
 		maxSpans: maxSpansWatchlistSize,
 	}
+}
+
+func (p *dtSpanMetadataMap) get(spanContext trace.SpanContext) *dtSpanMetadata {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	return p.spans[getSpanKey(spanContext)]
 }
 
 func (p *dtSpanMetadataMap) add(spanContext trace.SpanContext, metadata *dtSpanMetadata) {
