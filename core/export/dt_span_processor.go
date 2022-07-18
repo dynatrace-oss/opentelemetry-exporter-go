@@ -2,13 +2,14 @@ package export
 
 import (
 	"context"
-	"core/configuration"
 	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
+	"core/configuration"
 )
 
 // TODO: move to ODIN config package and replace default values with proper values from config package
