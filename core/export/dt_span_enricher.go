@@ -1,11 +1,9 @@
 package export
 
 import (
-	"log"
 	"math/rand"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
@@ -15,7 +13,7 @@ import (
 type dtSpanEnricher struct{}
 
 func (se *dtSpanEnricher) CreateSpanMetaData(
-	span sdktrace.ReadWriteSpan,
+	span sdktrace.ReadOnlySpan,
 	transmitOptions *transmitOptions,
 	clusterId,
 	tenantId int32,
@@ -32,14 +30,11 @@ func (se *dtSpanEnricher) CreateSpanMetaData(
 		metadata.fw4Tag = createFw4Tag(clusterId, tenantId)
 	}
 
-	// Set serverId if not provided and not yet set. Then, set the XDtc attribute if provided.
+	// Set serverId if not provided and not yet set.
 	fw4Tag := getFw4Tag(metadata)
 	if fw4Tag != nil && fw4Tag.ServerID == 0 {
-		if serverId := metadata.serverId; serverId != -1 {
+		if serverId := metadata.serverId; serverId != 0 {
 			fw4Tag.ServerID = int32(serverId)
-			xDtc := metadata.xDtc
-			// TODO "dt.rum.dtc" string literal should come from SemConv constants instead
-			span.SetAttributes(attribute.String("dt.rum.dtc", xDtc))
 		}
 	}
 
@@ -64,9 +59,6 @@ func extractMetaDataFromParentSpanContext(
 
 		if getFw4Tag(parentSpanMetaData) != nil {
 			shouldCreateFw4Tag = false
-		} else {
-			log.Printf("Expected FW4 tag to exist for span (traceId: %s, spanId: %s) but none found.\n",
-				parentSpanContext.TraceID(), parentSpanContext.SpanID())
 		}
 	}
 
@@ -84,12 +76,14 @@ func getTenantParentSpanIdFromFw4Tag(fw4Tag *fw4.Fw4Tag) trace.SpanID {
 	return fw4Tag.SpanID
 }
 
+var random = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 func createFw4Tag(clusterId, tenantId int32) *fw4.Fw4Tag {
 	tag := fw4.EmptyTag()
 	tag.ClusterID = clusterId
 	tag.TenantID = tenantId
 	// Set lowest 8 bits of PathInfo to a pseudo-random number in the range [0, 255]
-	tag.PathInfo = uint32(rand.Intn(256))
+	tag.PathInfo = uint32(random.Intn(256))
 	return &tag
 }
 

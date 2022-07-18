@@ -93,9 +93,7 @@ func (p *DtSpanProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
 	log.Printf("DtSpanProcessor: End span %s", s.Name())
 	if !p.spanWatchlist.exist(s.SpanContext()) {
 		// Most likely the span watchlist map was full on span start, so try to re-add span
-		// We must cast the span to a ReadWriteSpan in order to be able to set attributes in the SpanEnricher.
-		rwSpan := s.(sdktrace.ReadWriteSpan)
-		metadata := p.enricher.CreateSpanMetaData(rwSpan, defaultTransmitOptions, p.clusterId, p.tenantId, &p.spanWatchlist)
+		metadata := p.enricher.CreateSpanMetaData(s, defaultTransmitOptions, p.clusterId, p.tenantId, &p.spanWatchlist)
 		p.spanWatchlist.add(s.SpanContext(), metadata)
 	}
 }
