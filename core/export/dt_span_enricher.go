@@ -7,7 +7,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	trace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace"
 
 	"core/fw4"
 )

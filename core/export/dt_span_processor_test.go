@@ -2,7 +2,6 @@ package export
 
 import (
 	"context"
-	"core/configuration"
 	"fmt"
 	"log"
 	"sync"
@@ -13,6 +12,8 @@ import (
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+
+	"core/configuration"
 )
 
 type testExporter struct {
