@@ -1,0 +1,30 @@
+{
+    "AgentActive": true,
+    "ClusterID": 123,
+    "Tenant": "<add>",
+    "Connection": {
+        "AuthToken": "<add>",
+        "BaseUrl": "http://example.com",
+        "Proxy": "<add>"
+    },
+    "RUM": {
+        "ClientIpHeaders": [
+            "x-forwarded-for"
+        ]
+    },
+    "Testability": {
+        "SpanProcessingIntervalMs": 3000,
+        "KeepAliveIntervalMs": 30000,
+        "MetricCollectionIntervalMs": 10000,
+        "MetricCollectionsPerExport": 6
+    },
+    "Logging": {
+        "Destination": "stdout",
+        "Go": {
+            "Flags": "SpanExporter=true,SpanProcessor=true,TracerProvider=true"
+        }
+    },
+    "Debug": {
+        "AddStackOnStart": true
+    }
+}
