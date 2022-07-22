@@ -1,8 +1,10 @@
-package export
+package trace
 
 import (
 	"context"
 	"time"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"core/internal/logger"
 )
@@ -16,7 +18,7 @@ const (
 
 type dtSpanExporter interface {
 	// TODO: discuss how to pass spans to export
-	export(ctx context.Context, spans map[spanKey]*dtSpanMetadata) error
+	export(ctx context.Context, spans dtSpanSet) error
 }
 
 type dtSpanExporterImpl struct {
@@ -29,14 +31,13 @@ func newDtSpanExporter() dtSpanExporter {
 	}
 }
 
-func (e *dtSpanExporterImpl) export(_ context.Context, spans map[spanKey]*dtSpanMetadata) error {
+func (e *dtSpanExporterImpl) export(_ context.Context, spans dtSpanSet) error {
 	e.logger.Debugf("Number of spans to export: %d", len(spans))
-	for _, v := range spans {
-		e.logger.Debugf("Exporting span: %s", v.span.Name())
+	for s := range spans {
+		e.logger.Debugf("Exporting span: %s", s.Span.(sdktrace.ReadOnlySpan).Name())
 	}
 
 	// emulate export operation
 	time.Sleep(500 * time.Millisecond)
-	// TODO
 	return nil
 }

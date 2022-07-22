@@ -1,4 +1,4 @@
-package export
+package trace
 
 import (
 	"context"
@@ -7,16 +7,10 @@ import (
 	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 
+	"core/configuration"
 	"core/internal/logger"
-)
-
-// TODO: move to ODIN config package and replace default values with proper values from config package
-const (
-	defaultUpdateIntervalMs    = 3000
-	defaultKeepAliveIntervalMs = 25000
-	defaultOpenSpanTimeoutMs   = 115 * 60 * 1000
-	defaultForceFlushTimeoutMs = 5000
 )
 
 type flushContext struct {
@@ -25,9 +19,9 @@ type flushContext struct {
 	err                  error
 }
 
-type DtSpanProcessor struct {
+type dtSpanProcessor struct {
 	exporter                dtSpanExporter
-	spanWatchlist           dtSpanMetadataMap
+	spanWatchlist           dtSpanWatchlist
 	stopExportingCh         chan struct{}
 	stopExportingWait       sync.WaitGroup
 	exportingStopped        int32
@@ -39,15 +33,15 @@ type DtSpanProcessor struct {
 	logger                  *logger.ComponentLogger
 }
 
-// NewDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
-func NewDtSpanProcessor() *DtSpanProcessor {
-	p := &DtSpanProcessor{
+// newDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
+func newDtSpanProcessor() *dtSpanProcessor {
+	p := &dtSpanProcessor{
 		exporter:            newDtSpanExporter(),
-		spanWatchlist:       newDtSpanMetadataMap(defaultMaxSpansWatchlistSize),
+		spanWatchlist:       newDtSpanWatchlist(configuration.DefaultMaxSpansWatchlistSize),
 		stopExportingCh:     make(chan struct{}),
 		exportingStopped:    0,
 		flushRequestCh:      make(chan *flushContext, 1),
-		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(defaultUpdateIntervalMs)),
+		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs)),
 		logger:              logger.NewComponentLogger("SpanProcessor"),
 	}
 
@@ -60,41 +54,77 @@ func NewDtSpanProcessor() *DtSpanProcessor {
 	return p
 }
 
-// OnStart adds a newly created span with a corresponding metadata struct to the span watchlist for later processing.
-func (p *DtSpanProcessor) OnStart(_ context.Context, s sdktrace.ReadWriteSpan) {
+// onStart adds a newly created span with a corresponding metadata struct to the span watchlist for later processing.
+func (p *dtSpanProcessor) onStart(ctx context.Context, s *dtSpan) {
 	if p.isExportingStopped() {
 		return
 	}
 
-	p.logger.Debugf("Start span %s", s.Name())
+	// only recording span has to be sent to Dynatrace Cluster
+	span, ok := s.Span.(sdktrace.ReadWriteSpan)
+	if !ok {
+		return
+	}
 
-	metadata := newDtSpanMetadata(s)
-	if !p.spanWatchlist.add(s.SpanContext(), metadata) {
-		p.logger.Infof("Span watchlist map is full, can not add metadata for started span: %s", metadata.span.Name())
+	p.logger.Debugf("Start span %s", span.Name())
+
+	// TODO: Example how to handle parent span context, will be used by Span Enricher
+	parentSpan := trace.SpanFromContext(ctx)
+	if s, ok := parentSpan.(*dtSpan); ok {
+		// Parent span context holds Dynatrace Span started locally by Dynatrace TracerProvider, thus metadata is available
+		p.logger.Debugf("Parent span last sent ms %d", s.metadata.lastSentMs)
+	} else if parentSpan.SpanContext().IsValid() && parentSpan.SpanContext().IsRemote() {
+		// Parent span context holds remote span.
+		// TraceContext Propagator creates remote span by calling trace.ContextWithRemoteSpanContext(ctx, sc) method.
+		// The remote span is nonRecordingSpan with SpanContext extracted via TraceContext TextMapPropagator.
+		//
+		// Important outcome:
+		// Remote span isn't create via a configured Dynatrace TracerProvider, thus it can not be handled by us as an internal span.
+		//
+		// Discuss possible solutions:
+		// Dynatrace propagator on a client side will have to inject metadata(FW4) into tracestate,
+		// thus it can be extracted and processed on server side.
+		json, err := parentSpan.SpanContext().MarshalJSON()
+		if err != nil {
+			p.logger.Infof("Can not serialize Remote SpanContext: %s", err)
+		} else {
+			p.logger.Debugf("SpanContext of Remote Span: %s", string(json))
+		}
+	} else {
+		// Parent span is neither Dynatrace nor Remote span, thus can't be handled by Dynatrace span processor
+		p.logger.Debugf("Span processor can not handle Parent span of %T type", parentSpan)
+	}
+
+	if !p.spanWatchlist.add(s) {
+		p.logger.Infof("Span watchlist map is full, can not add metadata for started span: %s", span.Name())
 	}
 }
 
-// OnEnd adds ended span in a processor map for later processing if it wasn't added upon span start call due to a
+// onEnd adds ended span in a processor map for later processing if it wasn't added upon span start call due to a
 // reaching max spans limit of the processor map.
-func (p *DtSpanProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
+func (p *dtSpanProcessor) onEnd(s *dtSpan) {
 	if p.isExportingStopped() {
 		return
 	}
 
-	p.logger.Debugf("End span %s", s.Name())
+	// only recording span has to be sent to Dynatrace Cluster
+	span, ok := s.Span.(sdktrace.ReadWriteSpan)
+	if !ok {
+		return
+	}
 
-	if !p.spanWatchlist.exist(s.SpanContext()) {
+	p.logger.Debugf("End span %s", span.Name())
+	if !p.spanWatchlist.contains(s) {
 		// most likely the span watchlist map was full on span start, so try to re-add span
-		metadata := newDtSpanMetadata(s)
-		if !p.spanWatchlist.add(s.SpanContext(), metadata) {
-			p.logger.Infof("Span watchlist map is full, can not add metadata for ended span: %s", metadata.span.Name())
+		if !p.spanWatchlist.add(s) {
+			p.logger.Infof("Span watchlist map is full, can not add metadata for ended span: %s", span.Name())
 		}
 	}
 }
 
-// Shutdown stops exporting goroutine and exports all remaining spans to Dynatrace Cluster.
+// shutdown stops exporting goroutine and exports all remaining spans to Dynatrace Cluster.
 // It executes only once, subsequent call does nothing.
-func (p *DtSpanProcessor) Shutdown(ctx context.Context) error {
+func (p *dtSpanProcessor) shutdown(ctx context.Context) error {
 	var err error
 	p.shutdownOnce.Do(func() {
 		p.logger.Debugf("Shutting down is called")
@@ -115,7 +145,7 @@ func (p *DtSpanProcessor) Shutdown(ctx context.Context) error {
 		select {
 		case <-waitShutdown:
 			p.logger.Debug("Shutdown operation has been finished")
-		case <-time.After(time.Millisecond * defaultForceFlushTimeoutMs):
+		case <-time.After(time.Millisecond * configuration.DefaultForceFlushTimeoutMs):
 			p.logger.Warn("Flush operation timeout is reached")
 			cancelFlush()
 			err = ctx.Err()
@@ -128,9 +158,9 @@ func (p *DtSpanProcessor) Shutdown(ctx context.Context) error {
 	return err
 }
 
-// ForceFlush waits for any in-progress send operation to be finished and starts a new send operation to serve this
+// forceFlush waits for any in-progress send operation to be finished and starts a new send operation to serve this
 // flush call.
-func (p *DtSpanProcessor) ForceFlush(ctx context.Context) error {
+func (p *dtSpanProcessor) forceFlush(ctx context.Context) error {
 	if p.isExportingStopped() {
 		p.logger.Debug("The processor is already shut down, ignore flush call")
 		return nil
@@ -161,7 +191,7 @@ func (p *DtSpanProcessor) ForceFlush(ctx context.Context) error {
 	}
 
 	select {
-	case <-time.After(time.Millisecond * defaultForceFlushTimeoutMs):
+	case <-time.After(time.Millisecond * configuration.DefaultForceFlushTimeoutMs):
 		// the flush operation SHOULD abort any in-progress send operation,
 		// thus cancel flush context to inform exporting goroutine
 		cancelFlush()
@@ -178,7 +208,7 @@ func (p *DtSpanProcessor) ForceFlush(ctx context.Context) error {
 }
 
 // runSpanExportingLoop starts exporting loop to process flush and periodic send operations
-func (p *DtSpanProcessor) runSpanExportingLoop() {
+func (p *dtSpanProcessor) runSpanExportingLoop() {
 	defer p.periodicSendOpTimer.Stop()
 	for {
 		select {
@@ -209,17 +239,17 @@ func (p *DtSpanProcessor) runSpanExportingLoop() {
 	}
 }
 
-func (p *DtSpanProcessor) isExportingStopped() bool {
+func (p *dtSpanProcessor) isExportingStopped() bool {
 	return atomic.LoadInt32(&p.exportingStopped) == 1
 }
 
 // exportSpans collect spans that are ready to be exported and pass them to Dynatrace spans exporter
-func (p *DtSpanProcessor) exportSpans(ctx context.Context, resetPeriodicSendOpTimer bool, t exportType) error {
-	p.logger.Debugf("Spans export is called. Export type: %d", t)
+func (p *dtSpanProcessor) exportSpans(ctx context.Context, resetPeriodicSendOpTimer bool, t exportType) error {
+	p.logger.Debugf("Spans export is called. export type: %d", t)
 	if resetPeriodicSendOpTimer {
 		// reset periodic send operation timer at the end of the send operation since
 		// the time the operation takes must increase the update interval
-		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(defaultUpdateIntervalMs))
+		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs))
 	}
 
 	spans := p.spanWatchlist.getSpansToExport()
