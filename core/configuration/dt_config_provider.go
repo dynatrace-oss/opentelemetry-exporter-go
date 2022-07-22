@@ -9,6 +9,15 @@ import (
 	"core/configuration/internal/util"
 )
 
+// TODO: Add as part of DtConfiguration struct?
+const (
+	DefaultUpdateIntervalMs      = 3000
+	DefaultKeepAliveIntervalMs   = 25000
+	DefaultOpenSpanTimeoutMs     = 115 * 60 * 1000
+	DefaultForceFlushTimeoutMs   = 5000
+	DefaultMaxSpansWatchlistSize = 2048
+)
+
 type DtConfiguration struct {
 	ClusterId                int32
 	Tenant                   string
