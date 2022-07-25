@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"core/configuration"
 	"core/internal/logger"
 )
 
@@ -60,7 +62,7 @@ func (p *DtTracerProvider) ForceFlush(ctx context.Context) error {
 		return errInvalidSpanProcessor
 	}
 
-	return p.processor.forceFlush(ctx)
+	return measureExecutionTime(ctx, p.processor.forceFlush, "ForceFlush", p.logger)
 }
 
 // Shutdown stops exporting goroutine and exports all remaining spans to Dynatrace Cluster.
@@ -70,5 +72,28 @@ func (p *DtTracerProvider) Shutdown(ctx context.Context) error {
 		return errInvalidSpanProcessor
 	}
 
-	return p.processor.shutdown(ctx)
+	return measureExecutionTime(ctx, p.processor.shutdown, "Shutdown", p.logger)
+}
+
+// measureExecutionTime measure execution time of a given function
+// and log a warning message if it takes more than a third of the operation timeout
+func measureExecutionTime(ctx context.Context, f func(context.Context) error, opName string, logger *logger.ComponentLogger) error {
+	timeout := time.Millisecond * time.Duration(configuration.DefaultFlushOrShutdownTimeoutMs)
+	deadline, ok := ctx.Deadline()
+	if ok {
+		deadlineTimeout := time.Until(deadline)
+		if timeout > deadlineTimeout {
+			timeout = deadlineTimeout
+		}
+	}
+
+	start := time.Now()
+	err := f(ctx)
+	timeTaken := time.Since(start)
+
+	if timeTaken > (timeout / 3) {
+		logger.Warnf("%s execution took %s which more than a third of the operation timeout %s", opName, timeTaken, timeout)
+	}
+
+	return err
 }
