@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"core/configuration"
@@ -23,21 +24,10 @@ const (
 
 var internalDtLogger dtLogger
 
-func init() {
-	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
-	if err != nil {
-		fmt.Println("Dynatrace Logger cannot be configured due to an error in Configuration provider: " + err.Error())
-		return
-	}
-
-	flags := parseLogFlags(config.LoggingFlags)
-	internalDtLogger.configure(config.LoggingDestination, flags)
-	logStartupBanner(config)
-}
-
 type dtLogger struct {
-	logger *log.Logger
-	flags  debugLogFlags
+	logger        *log.Logger
+	configureOnce sync.Once
+	flags         debugLogFlags
 }
 
 func (p *dtLogger) enabled() bool {
@@ -83,6 +73,23 @@ type ComponentLogger struct {
 }
 
 func NewComponentLogger(componentName string) *ComponentLogger {
+	internalDtLogger.configureOnce.Do(func() {
+		config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
+		if err != nil {
+			fmt.Println("Dynatrace Logger cannot be configured due to an error in Configuration provider: " + err.Error())
+			return
+		}
+
+		flags := parseLogFlags(config.LoggingFlags)
+		internalDtLogger.configure(config.LoggingDestination, flags)
+
+		logStartupBanner(config)
+	})
+
+	return newComponentLogger(componentName)
+}
+
+func newComponentLogger(componentName string) *ComponentLogger {
 	logger := &ComponentLogger{componentName: componentName}
 	logger.debugFlagEnabled = internalDtLogger.debugFlagEnabled(componentName)
 	return logger

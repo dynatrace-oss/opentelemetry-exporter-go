@@ -11,7 +11,7 @@ import (
 )
 
 func logStartupBanner(config *configuration.DtConfiguration) {
-	logger := NewComponentLogger("Core")
+	logger := newComponentLogger("Core")
 
 	logger.Infof("OneAgent ODIN Go version .... %s, build date %s, SCM Rev. %s",
 		version.FullVersion, version.BuildDate, version.CommitHash)
