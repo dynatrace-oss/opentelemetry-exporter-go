@@ -11,11 +11,19 @@ import (
 
 // TODO: Add as part of DtConfiguration struct?
 const (
-	DefaultUpdateIntervalMs      = 3000
-	DefaultKeepAliveIntervalMs   = 25000
-	DefaultOpenSpanTimeoutMs     = 115 * 60 * 1000
-	DefaultForceFlushTimeoutMs   = 5000
-	DefaultMaxSpansWatchlistSize = 2048
+	DefaultFlushExportConnTimeoutMs   = 1000
+	DefaultFlushExportDataTimeoutMs   = 5000
+	DefaultRegularExportConnTimeoutMs = 10000
+	DefaultRegularExportDataTimeoutMs = 60000
+)
+
+// TODO: Add as part of DtConfiguration struct?
+const (
+	DefaultUpdateIntervalMs         = 3000
+	DefaultKeepAliveIntervalMs      = 25000
+	DefaultOpenSpanTimeoutMs        = 115 * 60 * 1000 // 1h 55 mins (in millis)
+	DefaultFlushOrShutdownTimeoutMs = DefaultFlushExportConnTimeoutMs + DefaultFlushExportDataTimeoutMs
+	DefaultMaxSpansWatchlistSize    = 2048
 )
 
 type DtConfiguration struct {

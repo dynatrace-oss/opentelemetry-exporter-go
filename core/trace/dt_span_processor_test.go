@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -19,7 +20,29 @@ type testExporter struct {
 	numIterations       int
 }
 
-func (e *testExporter) export(ctx context.Context, _ dtSpanSet) (err error) {
+func TestMain(m *testing.M) {
+	os.Setenv("DT_CLUSTER_ID", "123")
+	defer os.Unsetenv("DT_CLUSTER_ID")
+
+	os.Setenv("DT_TENANT", "testTenant")
+	defer os.Unsetenv("DT_TENANT")
+
+	os.Setenv("DT_CONNECTION_BASE_URL", "https://example.com")
+	defer os.Unsetenv("DT_CONNECTION_BASE_URL")
+
+	os.Setenv("DT_CONNECTION_AUTH_TOKEN", "testAuthToken")
+	defer os.Unsetenv("DT_CONNECTION_AUTH_TOKEN")
+
+	os.Setenv("DT_LOGGING_DESTINATION", "stdout")
+	defer os.Unsetenv("DT_LOGGING_DESTINATION")
+
+	os.Setenv("DT_LOGGING_GO_FLAGS", "SpanExporter=true,SpanProcessor=true,TracerProvider=true")
+	defer os.Unsetenv("DT_LOGGING_GO_FLAGS")
+
+	m.Run()
+}
+
+func (e *testExporter) export(ctx context.Context, _ exportType, _ dtSpanSet) (err error) {
 	for i := e.numIterations; i > 0; i-- {
 		// simulate exporting operation
 		time.Sleep(time.Millisecond * time.Duration(e.iterationIntervalMs))
@@ -88,6 +111,12 @@ func TestDtSpanProcessorShutdown(t *testing.T) {
 
 func TestDtSpanProcessorGenerateSpansAndShutdown(t *testing.T) {
 	tp := NewTracerProvider()
+	tp.processor.exporter = &testExporter{
+		exportingFinished:   make(chan bool, 1),
+		iterationIntervalMs: 500,
+		numIterations:       1,
+	}
+
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
