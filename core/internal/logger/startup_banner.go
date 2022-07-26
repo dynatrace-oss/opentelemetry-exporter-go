@@ -13,11 +13,10 @@ import (
 func logStartupBanner(config *configuration.DtConfiguration) {
 	logger := NewComponentLogger("Core")
 
-	logger.Infof("OneAgent ODIN Go version .... %s, build date %s, SCM Rev. %s",
-		version.FullVersion, version.BuildDate, version.CommitHash)
+	logger.Infof("OneAgent ODIN Go version .... %s, build date %s", version.FullVersion, version.BuildDate)
 
-	if version.IsDevVersion {
-		logger.Infof("This is a development version (%s) and not intended for use in production environments.", version.FullVersion)
+	if isDevVersion := version.FullVersion == "0.0.0"; isDevVersion {
+		logger.Infof("This is a development version and not intended for use in production environments.")
 	}
 
 	exePath, err := os.Executable()

@@ -1,0 +1,43 @@
+name: Create release
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      sprintVersion:
+        required: true
+        type: string
+        description: The full sprint version, e.g. 1.245.0
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      # Will check out the branch, update version.go, and create a new branch and tag.
+      # E.g. if the sprint version is 1.245.0, it will:
+      # - set the "Version" string constant to "1.245.0"
+      # - create a branch named release/1.245.0
+      # - create a tag named v1.245.0
+      - name: Create release branch and tag
+        # Assign the Action sprintVersion input to the SPRINT_VERSION environment variable.
+        env:
+          SPRINT_VERSION: ${{ inputs.sprintVersion }}
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git config push.autoSetupRemote true
+          git checkout -b release/$SPRINT_VERSION
+          sh update_version.sh
+          git add .
+          git commit -m "Release $SPRINT_VERSION"
+          git tag -a v$SPRINT_VERSION -m "Release $SPRINT_VERSION"
+          git push --follow-tags
+
+      # Update the Go modules index so that "go get github.com/dynatrace-oss/opentelemetry-exporter-go"
+      # will resolve to the latest tag.
+      # Users may install a specific version, e.g. "go get github.com/dynatrace-oss/opentelemetry-exporter-go@v1.245.0"
+      - uses: actions/setup-go@v3
+      - name: Update Go modules index
+        run: GOPROXY=proxy.golang.org go list -m github.com/dynatrace-oss/opentelemetry-exporter-go@v${{ inputs.sprintVersion }}
