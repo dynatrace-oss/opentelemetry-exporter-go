@@ -1,11 +1,11 @@
 {
     "AgentActive": true,
-    "ClusterID": 12345,
-    "Tenant": "schnitzel",
+    "ClusterID": 123,
+    "Tenant": "<add>",
     "Connection": {
-        "AuthToken": "dt0a01.schnitzel.xsdffdedr",
-        "BaseUrl": "https://ag.xyz.com",
-        "Proxy": "https://user:pass@foo.bar.com:8081"
+        "AuthToken": "<add>",
+        "BaseUrl": "http://example.com",
+        "Proxy": "<add>"
     },
     "RUM": {
         "ClientIpHeaders": [
@@ -19,9 +19,9 @@
         "MetricCollectionsPerExport": 6
     },
     "Logging": {
-        "Destination": "stderr",
+        "Destination": "stdout",
         "Go": {
-            "Flags": "Exporter=true,Propagator=false"
+            "Flags": "SpanExporter=true,SpanProcessor=true,TracerProvider=true"
         }
     },
     "Debug": {

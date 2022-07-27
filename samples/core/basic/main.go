@@ -8,25 +8,17 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"core/configuration"
-	"core/export"
+	dtTrace "core/trace"
 )
 
 func main() {
-	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
-	if err != nil {
-		log.Printf("Cannot get configuration: %s", err)
-		return
-	}
+	// Setup Dynatrace TracerProvider as a global TracerProvider
+	tp := dtTrace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
 
-	processor := export.NewDtSpanProcessor(config)
-	opt := sdktrace.WithSpanProcessor(processor)
-	otel.SetTracerProvider(sdktrace.NewTracerProvider(opt))
-
-	tracer := otel.Tracer("BasicOtelUseCase")
+	tracer := otel.Tracer("Dynatrace Tracer")
 
 	ctx, spanA := tracer.Start(context.Background(), "Span A")
 	endTimestamp := trace.WithTimestamp(time.Now().Add(750 * time.Millisecond))
@@ -36,7 +28,7 @@ func main() {
 	endTimestamp = trace.WithTimestamp(time.Now().Add(1250 * time.Millisecond))
 	spanB.End(endTimestamp)
 
-	err = processor.ForceFlush(ctx)
+	err := tp.ForceFlush(ctx)
 	if err != nil {
 		log.Printf("Can not perform flush operation: %s", err)
 	}
@@ -45,11 +37,11 @@ func main() {
 	endTimestamp = trace.WithTimestamp(time.Now().Add(300 * time.Millisecond))
 	spanC.End(endTimestamp)
 
-	err = processor.Shutdown(ctx)
+	err = tp.Shutdown(ctx)
 	if err != nil {
 		log.Printf("Can not perform shutdown operation: %s", err)
 	}
 
-	// wait for user input before finish
+	// Wait for user input before finish
 	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
