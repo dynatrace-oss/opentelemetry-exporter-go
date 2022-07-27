@@ -10,12 +10,19 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
+	"core/configuration"
 	dtTrace "core/trace"
 )
 
 func main() {
+	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
+	if err != nil {
+		log.Printf("Cannot get configuration: %s", err)
+		return
+	}
+
 	// Setup Dynatrace TracerProvider as a global TracerProvider
-	tp := dtTrace.NewTracerProvider()
+	tp := dtTrace.NewTracerProvider(config)
 	otel.SetTracerProvider(tp)
 
 	tracer := otel.Tracer("Dynatrace Tracer")
@@ -28,7 +35,7 @@ func main() {
 	endTimestamp = trace.WithTimestamp(time.Now().Add(1250 * time.Millisecond))
 	spanB.End(endTimestamp)
 
-	err := tp.ForceFlush(ctx)
+	err = tp.ForceFlush(ctx)
 	if err != nil {
 		log.Printf("Can not perform flush operation: %s", err)
 	}

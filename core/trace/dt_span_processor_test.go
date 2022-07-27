@@ -57,12 +57,16 @@ func generateSpans(tr trace.Tracer, option spanGeneratorOption) {
 	wg.Wait()
 }
 
-func createSpanProcessor() *DtSpanProcessor {
-	return NewDtSpanProcessor(&configuration.DtConfiguration{})
+func createSpanProcessor() *dtSpanProcessor {
+	return newDtSpanProcessor(&configuration.DtConfiguration{})
+}
+
+func createTracerProvider() *DtTracerProvider {
+	return NewTracerProvider(&configuration.DtConfiguration{})
 }
 
 func TestDtSpanProcessorStartSpans(t *testing.T) {
-	tp := createSpanProcessor()
+	tp := createTracerProvider()
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
@@ -93,7 +97,7 @@ func TestDtSpanProcessorShutdown(t *testing.T) {
 }
 
 func TestDtSpanProcessorGenerateSpansAndShutdown(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
@@ -147,35 +151,10 @@ func TestDtSpanProcessorShutdownTimeoutReached(t *testing.T) {
 	}
 }
 
-func TestDtSpanProcessorForceFlush(t *testing.T) {
-	p := NewDtSpanProcessor()
-	require.Zero(t, p.exportingStopped)
-	require.Zero(t, len(p.spanWatchlist.spans))
-
-	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(p))
-	otel.SetTracerProvider(tp)
-	tr := otel.Tracer("SDK Tracer")
-
-	generateSpans(tr, spanGeneratorOption{
-		numSpans:   20,
-		endedSpans: true,
-	})
-	require.EqualValues(t, len(p.spanWatchlist.spans), 20)
-
-	p.ForceFlush(context.Background())
-	require.EqualValues(t, len(p.spanWatchlist.spans), 0)
-
-	generateSpans(tr, spanGeneratorOption{
-		numSpans:   5,
-		endedSpans: true,
-	})
-	require.EqualValues(t, len(p.spanWatchlist.spans), 5)
-}
-
 func TestDtSpanProcessorForceFlushNonEndedSpan(t *testing.T) {
-	p := createSpanProcessor()
-	require.Zero(t, p.exportingStopped)
-	require.Zero(t, len(p.spanWatchlist.spans))
+	tp := createTracerProvider()
+	require.Zero(t, tp.processor.exportingStopped)
+	require.Zero(t, tp.processor.spanWatchlist.len())
 
 	otel.SetTracerProvider(tp)
 	tr := otel.Tracer("Dynatrace Tracer")
@@ -253,7 +232,7 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 		numIterations:       4,
 	}
 
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	tp.processor.exporter = exporter
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())

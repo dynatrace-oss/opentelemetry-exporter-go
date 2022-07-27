@@ -21,7 +21,7 @@ const (
 type DtConfiguration struct {
 	ClusterId                int32
 	Tenant                   string
-	TenantID                 int32
+	TenantId                 int32
 	AgentId                  int64
 	BaseUrl                  string
 	AuthToken                string
@@ -88,8 +88,8 @@ func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, err
 	if validationErr := validateConfiguration(config); validationErr != nil {
 		return nil, validationErr
 	}
-	
-	config.TenantID = util.CalculateTenantId(config.Tenant)
+
+	config.TenantId = util.CalculateTenantId(config.Tenant)
 
 	return config, nil
 }

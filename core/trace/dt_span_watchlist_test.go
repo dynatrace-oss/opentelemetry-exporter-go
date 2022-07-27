@@ -11,7 +11,7 @@ import (
 )
 
 func TestSpanWatchlistMaximumSizeIsReached(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	otel.SetTracerProvider(tp)
 
 	tr := otel.Tracer("Dynatrace Tracer")
@@ -27,7 +27,7 @@ func TestSpanWatchlistMaximumSizeIsReached(t *testing.T) {
 }
 
 func TestSpanWatchlistAdd(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	otel.SetTracerProvider(tp)
 
 	tr := otel.Tracer("Dynatrace Tracer")
@@ -42,7 +42,7 @@ func TestSpanWatchlistAdd(t *testing.T) {
 }
 
 func TestSpanWatchlistExistRemove(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	otel.SetTracerProvider(tp)
 
 	tr := otel.Tracer("Dynatrace Tracer")
@@ -58,7 +58,7 @@ func TestSpanWatchlistExistRemove(t *testing.T) {
 }
 
 func TestSpanWatchlistSpansToExport(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	otel.SetTracerProvider(tp)
 
 	tr := otel.Tracer("Dynatrace Tracer")

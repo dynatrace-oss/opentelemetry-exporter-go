@@ -31,10 +31,13 @@ type dtSpanProcessor struct {
 	lastFlushRequestContext *flushContext
 	periodicSendOpTimer     *time.Timer
 	logger                  *logger.ComponentLogger
+
+	clusterId int32
+	tenantId  int32
 }
 
 // newDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
-func newDtSpanProcessor() *dtSpanProcessor {
+func newDtSpanProcessor(config *configuration.DtConfiguration) *dtSpanProcessor {
 	p := &dtSpanProcessor{
 		exporter:            newDtSpanExporter(),
 		spanWatchlist:       newDtSpanWatchlist(configuration.DefaultMaxSpansWatchlistSize),
@@ -43,6 +46,8 @@ func newDtSpanProcessor() *dtSpanProcessor {
 		flushRequestCh:      make(chan *flushContext, 1),
 		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs)),
 		logger:              logger.NewComponentLogger("SpanProcessor"),
+		clusterId:           config.ClusterId,
+		tenantId:            config.TenantId,
 	}
 
 	p.stopExportingWait.Add(1)
@@ -70,9 +75,9 @@ func (p *dtSpanProcessor) onStart(ctx context.Context, s *dtSpan) {
 
 	// TODO: Example how to handle parent span context, will be used by Span Enricher
 	parentSpan := trace.SpanFromContext(ctx)
-	if s, ok := parentSpan.(*dtSpan); ok {
+	if parentDtSpan, ok := parentSpan.(*dtSpan); ok {
 		// Parent span context holds Dynatrace Span started locally by Dynatrace TracerProvider, thus metadata is available
-		p.logger.Debugf("Parent span last sent ms %d", s.metadata.lastSentMs)
+		p.logger.Debugf("Parent span last sent ms %d", parentDtSpan.metadata.lastSentMs)
 	} else if parentSpan.SpanContext().IsValid() && parentSpan.SpanContext().IsRemote() {
 		// Parent span context holds remote span.
 		// TraceContext Propagator creates remote span by calling trace.ContextWithRemoteSpanContext(ctx, sc) method.

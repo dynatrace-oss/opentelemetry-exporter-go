@@ -11,8 +11,7 @@ import (
 )
 
 func TestDtSpanIsOfDtSpanType(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	setTracerProvider()
 
 	tr := otel.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
@@ -23,8 +22,7 @@ func TestDtSpanIsOfDtSpanType(t *testing.T) {
 }
 
 func TestDtSpanContainsSdkSpan(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	setTracerProvider()
 
 	tr := otel.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
@@ -36,8 +34,7 @@ func TestDtSpanContainsSdkSpan(t *testing.T) {
 }
 
 func TestDtSpanContainsValidTracer(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	setTracerProvider()
 
 	tr := otel.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
@@ -47,8 +44,7 @@ func TestDtSpanContainsValidTracer(t *testing.T) {
 }
 
 func TestReturnedContextContainsDtSpan(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	setTracerProvider()
 
 	tr := otel.Tracer("Dynatrace tracer")
 	ctx, s := tr.Start(context.Background(), "Test span")

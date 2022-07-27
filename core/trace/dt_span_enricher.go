@@ -1,4 +1,4 @@
-package export
+package trace
 
 import (
 	"math/rand"
@@ -17,7 +17,7 @@ func (se *dtSpanEnricher) CreateSpanMetaData(
 	transmitOptions *transmitOptions,
 	clusterId,
 	tenantId int32,
-	metadataMap *dtSpanMetadataMap,
+	// metadataMap *dtSpanMetadataMap,
 ) *dtSpanMetadata {
 	metadata := newDtSpanMetadata(transmitOptions, span)
 

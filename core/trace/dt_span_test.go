@@ -10,7 +10,7 @@ import (
 )
 
 func TestDtSpanEndsSdkSpan(t *testing.T) {
-	otel.SetTracerProvider(NewTracerProvider())
+	setTracerProvider()
 
 	tr := otel.Tracer("Dynatrace tracer")
 	_, span := tr.Start(context.Background(), "Test span")
@@ -24,7 +24,7 @@ func TestDtSpanEndsSdkSpan(t *testing.T) {
 
 
 func TestDtSpanGetTracerProvider(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	otel.SetTracerProvider(tp)
 
 	tr := otel.Tracer("Dynatrace tracer")

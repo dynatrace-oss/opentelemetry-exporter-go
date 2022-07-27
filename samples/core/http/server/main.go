@@ -15,6 +15,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 
+	"core/configuration"
 	dtTrace "core/trace"
 )
 
@@ -40,8 +41,14 @@ func main() {
 	const zipkinCollectorURL string = "http://localhost:9411/api/v2/spans"
 	opts := configureZipkinExporter(zipkinCollectorURL)
 
+	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
+	if err != nil {
+		log.Printf("Cannot get configuration: %s", err)
+		return
+	}
+
 	// Setup Dynatrace TracerProvider as a global TracerProvider
-	tp := dtTrace.NewTracerProvider(opts...)
+	tp := dtTrace.NewTracerProvider(config, opts...)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 

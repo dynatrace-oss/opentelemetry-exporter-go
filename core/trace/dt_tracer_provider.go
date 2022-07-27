@@ -8,6 +8,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"core/configuration"
 	"core/internal/logger"
 )
 
@@ -21,12 +22,12 @@ type DtTracerProvider struct {
 	logger         *logger.ComponentLogger
 }
 
-func NewTracerProvider(opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
+func NewTracerProvider(config *configuration.DtConfiguration, opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
 	tp := &DtTracerProvider{
 		TracerProvider: sdktrace.NewTracerProvider(opts...),
 		mu:             sync.Mutex{},
 		wrappedTracers: make(map[trace.Tracer]*dtTracer),
-		processor:      newDtSpanProcessor(),
+		processor:      newDtSpanProcessor(config),
 		logger:         logger.NewComponentLogger("TracerProvider"),
 	}
 

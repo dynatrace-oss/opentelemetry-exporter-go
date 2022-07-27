@@ -9,16 +9,14 @@ import (
 )
 
 func TestTracerProviderCreatesDtTracer(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	setTracerProvider()
 
 	tr := otel.Tracer("Dynatrace Tracer")
 	require.IsType(t, &dtTracer{}, tr)
 }
 
 func TestTracerProviderReturnsTheSameInstanceOfDtTracer(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	setTracerProvider()
 
 	tracerName := "Dynatrace Tracer"
 	tr := otel.Tracer(tracerName)
@@ -27,7 +25,7 @@ func TestTracerProviderReturnsTheSameInstanceOfDtTracer(t *testing.T) {
 }
 
 func TestTracerProviderShutdown(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	require.Zero(t, tp.processor.exportingStopped)
 
 	otel.SetTracerProvider(tp)
@@ -38,7 +36,7 @@ func TestTracerProviderShutdown(t *testing.T) {
 }
 
 func TestTracerProviderForceFlush(t *testing.T) {
-	tp := NewTracerProvider()
+	tp := createTracerProvider()
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
