@@ -15,8 +15,8 @@ func logStartupBanner(config *configuration.DtConfiguration) {
 
 	logger.Infof("OneAgent ODIN Go version .... %s, build date %s", version.FullVersion, version.BuildDate)
 
-	if isDevVersion := version.Version == "0.0.0"; isDevVersion {
-		logger.Infof("This is a development version and not intended for use in production environments.")
+	if version.Version == "0.0.0" {
+		logger.Infof("This is a development version (%s) and not intended for use in production environments.", version.FullVersion)
 	}
 
 	exePath, err := os.Executable()
