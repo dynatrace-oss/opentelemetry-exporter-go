@@ -43,18 +43,10 @@ type dtSpanExporterImpl struct {
 	disabled bool
 }
 
-func newDtSpanExporter() dtSpanExporter {
-	log := logger.NewComponentLogger("SpanExporter")
-
-	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
-	if err != nil {
-		log.Errorf("Can not create Span exporter due to Configuration error: %s", err)
-		return nil
-	}
-
+func newDtSpanExporter(config *configuration.DtConfiguration) dtSpanExporter {
 	d := &net.Dialer{}
 	exporter := &dtSpanExporterImpl{
-		logger: log,
+		logger: logger.NewComponentLogger("SpanExporter"),
 		config: config,
 		dialer: d,
 		client: &http.Client{
@@ -120,22 +112,16 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 }
 
 func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body io.Reader) (*http.Request, error) {
-	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
-	if err != nil {
-		e.logger.Errorf("Can not prepare a new request due to Configuration error: " + err.Error())
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", config.BaseUrl+cSpansPath, body)
+	req, err := http.NewRequestWithContext(ctx, "POST", e.config.BaseUrl+cSpansPath, body)
 	if err != nil {
 		e.logger.Errorf("Can not create HTTP request: %s", err)
 		return nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/x-dt-span-export")
-	req.Header.Set("Authorization", "Dynatrace "+config.AuthToken)
+	req.Header.Set("Authorization", "Dynatrace "+e.config.AuthToken)
 	req.Header.Set("User-Agent", fmt.Sprintf("odin-go/%s %#016x %s",
-		version.FullVersion, config.AgentId, config.Tenant))
+		version.FullVersion, e.config.AgentId, e.config.Tenant))
 	req.Header.Set("Accept", "*/*; q=0")
 
 	return req, nil

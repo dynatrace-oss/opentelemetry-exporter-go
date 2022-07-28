@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
+
+	"core/configuration"
 )
 
 type testExporter struct {
@@ -20,24 +22,23 @@ type testExporter struct {
 	numIterations       int
 }
 
+var testConfig *configuration.DtConfiguration
+
 func TestMain(m *testing.M) {
+	defer os.Clearenv()
+
 	os.Setenv("DT_CLUSTER_ID", "123")
-	defer os.Unsetenv("DT_CLUSTER_ID")
-
 	os.Setenv("DT_TENANT", "testTenant")
-	defer os.Unsetenv("DT_TENANT")
-
 	os.Setenv("DT_CONNECTION_BASE_URL", "https://example.com")
-	defer os.Unsetenv("DT_CONNECTION_BASE_URL")
-
 	os.Setenv("DT_CONNECTION_AUTH_TOKEN", "testAuthToken")
-	defer os.Unsetenv("DT_CONNECTION_AUTH_TOKEN")
-
 	os.Setenv("DT_LOGGING_DESTINATION", "stdout")
-	defer os.Unsetenv("DT_LOGGING_DESTINATION")
-
 	os.Setenv("DT_LOGGING_GO_FLAGS", "SpanExporter=true,SpanProcessor=true,TracerProvider=true")
-	defer os.Unsetenv("DT_LOGGING_GO_FLAGS")
+
+	var err error
+	testConfig, err = configuration.GlobalConfigurationProvider.GetConfiguration()
+	if err != nil {
+		fmt.Println("Can not get test configurations: " + err.Error())
+	}
 
 	m.Run()
 }
@@ -100,7 +101,7 @@ func TestDtSpanProcessorStartSpans(t *testing.T) {
 }
 
 func TestDtSpanProcessorShutdown(t *testing.T) {
-	p := newDtSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, p.spanWatchlist.len())
 
@@ -139,7 +140,7 @@ func TestDtSpanProcessorShutdownCancelContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	p := newDtSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	require.Zero(t, p.exportingStopped)
 
 	err := p.shutdown(ctx)
@@ -153,7 +154,7 @@ func TestDtSpanProcessorShutdownTimeoutReached(t *testing.T) {
 		numIterations:       20,
 	}
 
-	p := newDtSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
@@ -203,7 +204,7 @@ func TestDtSpanProcessorForceFlushCancelContext(t *testing.T) {
 		numIterations:       20,
 	}
 
-	p := newDtSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
@@ -227,7 +228,7 @@ func TestDtSpanProcessorForceFlushTimeoutReached(t *testing.T) {
 		numIterations:       20,
 	}
 
-	p := newDtSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 

@@ -58,10 +58,12 @@ func createMockConfigFileReaderWithCompleteConfig() *mockConfigFileReader {
 func TestDefaultConfigValues(t *testing.T) {
 	mockConfigFileReader := createMockConfigFileReaderWithRequiredFields()
 	config, _ := loadConfiguration(mockConfigFileReader)
+
 	// If these values are not explicitly defined in the config, they should
 	// have these default values.
 	assert.Equal(t, config.LoggingDestination, LoggingDestination_Off)
 	assert.Equal(t, config.RumClientIpHeaders, []string{"forwarded", "x-forwarded-for"})
+	assert.Equal(t, config.SpanProcessingIntervalMs, DefaultSpanProcessingIntervalMs)
 }
 
 func TestConfigurationViaEnvironment_EmptyConfigFile(t *testing.T) {
