@@ -5,20 +5,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 
 	"core/configuration"
 )
 
 func TestSpanWatchlistMaximumSizeIsReached(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
-
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	// generate more spans than watchlist can hold
 	numSpans := configuration.DefaultMaxSpansWatchlistSize + 10
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   numSpans,
 		endedSpans: true,
 	})
@@ -27,13 +24,11 @@ func TestSpanWatchlistMaximumSizeIsReached(t *testing.T) {
 }
 
 func TestSpanWatchlistAdd(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
-
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	numSpans := 10
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   numSpans,
 		endedSpans: true,
 	})
@@ -42,10 +37,9 @@ func TestSpanWatchlistAdd(t *testing.T) {
 }
 
 func TestSpanWatchlistExistRemove(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
-	tr := otel.Tracer("Dynatrace Tracer")
 	ctx, spanA := tr.Start(context.Background(), "Span A")
 	defer func() { spanA.End() }()
 
@@ -58,13 +52,11 @@ func TestSpanWatchlistExistRemove(t *testing.T) {
 }
 
 func TestSpanWatchlistSpansToExport(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
-
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	numSpans := 10
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   numSpans,
 		endedSpans: true,
 	})

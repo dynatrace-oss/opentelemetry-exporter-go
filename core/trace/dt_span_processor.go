@@ -134,8 +134,8 @@ func (p *dtSpanProcessor) shutdown(ctx context.Context) error {
 	p.shutdownOnce.Do(func() {
 		p.logger.Debugf("Shutting down is called")
 
-		ctx, cancelFlush := context.WithCancel(ctx)
-		defer cancelFlush()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
 		waitShutdown := make(chan struct{})
 		go func() {
@@ -157,7 +157,7 @@ func (p *dtSpanProcessor) shutdown(ctx context.Context) error {
 			p.logger.Debug("Shutdown operation is finished")
 		case <-time.After(time.Millisecond * configuration.DefaultFlushOrShutdownTimeoutMs):
 			p.logger.Warn("Shutdown operation timeout is reached")
-			cancelFlush()
+			cancel()
 			err = ctx.Err()
 		case <-ctx.Done():
 			err = ctx.Err()
@@ -177,8 +177,8 @@ func (p *dtSpanProcessor) forceFlush(ctx context.Context) error {
 	}
 
 	p.logger.Debug("Force flush is called")
-	ctx, cancelFlush := context.WithCancel(ctx)
-	defer cancelFlush()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	flushCtx := &flushContext{
 		flushRequestFinished: make(chan struct{}),
 		ctx:                  ctx,
@@ -204,7 +204,7 @@ func (p *dtSpanProcessor) forceFlush(ctx context.Context) error {
 	case <-time.After(time.Millisecond * configuration.DefaultFlushOrShutdownTimeoutMs):
 		// the flush operation SHOULD abort any in-progress send operation,
 		// thus cancel flush context to inform exporting goroutine
-		cancelFlush()
+		cancel()
 		flushCtx.err = ctx.Err()
 		p.logger.Warn("Flush operation timeout is reached")
 	case <-flushCtx.flushRequestFinished:

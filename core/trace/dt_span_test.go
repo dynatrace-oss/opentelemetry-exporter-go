@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 func TestDtSpanEndsSdkSpan(t *testing.T) {
-	otel.SetTracerProvider(NewTracerProvider())
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 
-	tr := otel.Tracer("Dynatrace tracer")
 	_, span := tr.Start(context.Background(), "Test span")
 	dynatraceSpan := span.(*dtSpan)
 	sdkSpan := dynatraceSpan.Span.(sdktrace.ReadOnlySpan)
@@ -22,12 +21,9 @@ func TestDtSpanEndsSdkSpan(t *testing.T) {
 	require.False(t, sdkSpan.EndTime().IsZero())
 }
 
-
 func TestDtSpanGetTracerProvider(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
-
-	tr := otel.Tracer("Dynatrace tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
 
 	require.Equal(t, tp, s.TracerProvider())
