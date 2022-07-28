@@ -34,18 +34,20 @@ type dtSpanProcessor struct {
 	lastFlushRequestContext *flushContext
 	periodicSendOpTimer     *time.Timer
 	logger                  *logger.ComponentLogger
+	config                  *configuration.DtConfiguration
 }
 
 // newDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
-func newDtSpanProcessor() *dtSpanProcessor {
+func newDtSpanProcessor(config *configuration.DtConfiguration) *dtSpanProcessor {
 	p := &dtSpanProcessor{
-		exporter:            newDtSpanExporter(),
+		exporter:            newDtSpanExporter(config),
 		spanWatchlist:       newDtSpanWatchlist(configuration.DefaultMaxSpansWatchlistSize),
 		stopExportingCh:     make(chan struct{}, 1),
 		exportingStopped:    0,
 		flushRequestCh:      make(chan *flushContext, 1),
-		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs)),
+		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(config.SpanProcessingIntervalMs)),
 		logger:              logger.NewComponentLogger("SpanProcessor"),
+		config:              config,
 	}
 
 	p.stopExportingWait.Add(1)
@@ -268,7 +270,7 @@ func (p *dtSpanProcessor) sendSpansToExport(ctx context.Context, resetPeriodicSe
 	if resetPeriodicSendOpTimer {
 		// reset periodic send operation timer at the end of the send operation since
 		// the time the operation takes must increase the update interval
-		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs))
+		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(p.config.SpanProcessingIntervalMs))
 	}
 
 	if p.exporter == nil {

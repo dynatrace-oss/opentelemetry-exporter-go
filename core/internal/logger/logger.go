@@ -76,7 +76,7 @@ func NewComponentLogger(componentName string) *ComponentLogger {
 	internalDtLogger.configureOnce.Do(func() {
 		config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
 		if err != nil {
-			fmt.Println("Dynatrace Logger cannot be configured due to an error in Configuration provider: " + err.Error())
+			fmt.Println("Dynatrace Logger cannot be instantiated due to a configuration error: " + err.Error())
 			return
 		}
 

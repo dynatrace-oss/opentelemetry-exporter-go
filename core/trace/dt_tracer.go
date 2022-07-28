@@ -4,11 +4,14 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/trace"
+
+	"core/configuration"
 )
 
 type dtTracer struct {
 	trace.Tracer
-	provider  *DtTracerProvider
+	provider *DtTracerProvider
+	config   *configuration.DtConfiguration
 }
 
 func (tr *dtTracer) Start(ctx context.Context, name string, options ...trace.SpanStartOption) (context.Context, trace.Span) {
@@ -19,9 +22,9 @@ func (tr *dtTracer) Start(ctx context.Context, name string, options ...trace.Spa
 
 	sdkCtx, sdkSpan := tr.Tracer.Start(parentCtx, name, options...)
 	span := &dtSpan{
-		Span: sdkSpan,
-		tracer:  tr,
-		metadata: newDtSpanMetadata(),
+		Span:     sdkSpan,
+		tracer:   tr,
+		metadata: newDtSpanMetadata(int64(tr.config.SpanProcessingIntervalMs)),
 	}
 
 	if sdkSpan.IsRecording() {

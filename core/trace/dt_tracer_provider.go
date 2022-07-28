@@ -3,6 +3,7 @@ package trace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -21,15 +22,23 @@ type DtTracerProvider struct {
 	wrappedTracers map[trace.Tracer]*dtTracer
 	processor      *dtSpanProcessor
 	logger         *logger.ComponentLogger
+	config         *configuration.DtConfiguration
 }
 
 func NewTracerProvider(opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
+	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
+	if err != nil {
+		fmt.Println("Dynatrace TracerProvider cannot be instantiated due to a configuration error: " + err.Error())
+		return nil
+	}
+
 	tp := &DtTracerProvider{
 		TracerProvider: sdktrace.NewTracerProvider(opts...),
 		mu:             sync.Mutex{},
 		wrappedTracers: make(map[trace.Tracer]*dtTracer),
-		processor:      newDtSpanProcessor(),
+		processor:      newDtSpanProcessor(config),
 		logger:         logger.NewComponentLogger("TracerProvider"),
+		config:         config,
 	}
 
 	tp.logger.Debug("TracerProvider created")
@@ -48,6 +57,7 @@ func (p *DtTracerProvider) Tracer(name string, opts ...trace.TracerOption) trace
 		tr = &dtTracer{
 			Tracer:   sdkTracer,
 			provider: p,
+			config:   p.config,
 		}
 		p.wrappedTracers[sdkTracer] = tr
 		p.logger.Debugf("Tracer '%s' created", name)

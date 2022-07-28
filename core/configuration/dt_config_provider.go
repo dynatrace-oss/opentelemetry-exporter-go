@@ -9,7 +9,6 @@ import (
 	"core/configuration/internal/util"
 )
 
-// TODO: Add as part of DtConfiguration struct?
 const (
 	DefaultFlushExportConnTimeoutMs   = 1000
 	DefaultFlushExportDataTimeoutMs   = 5000
@@ -17,9 +16,8 @@ const (
 	DefaultRegularExportDataTimeoutMs = 60000
 )
 
-// TODO: Add as part of DtConfiguration struct?
 const (
-	DefaultUpdateIntervalMs         = 3000
+	DefaultSpanProcessingIntervalMs = 3000
 	DefaultKeepAliveIntervalMs      = 25000
 	DefaultOpenSpanTimeoutMs        = 115 * 60 * 1000 // 1h 55 mins (in millis)
 	DefaultFlushOrShutdownTimeoutMs = DefaultFlushExportConnTimeoutMs + DefaultFlushExportDataTimeoutMs
@@ -105,6 +103,10 @@ func setDefaultConfigValues(config *DtConfiguration) {
 
 	if config.RumClientIpHeaders == nil {
 		config.RumClientIpHeaders = []string{"forwarded", "x-forwarded-for"}
+	}
+
+	if config.SpanProcessingIntervalMs == 0 {
+		config.SpanProcessingIntervalMs = DefaultSpanProcessingIntervalMs
 	}
 }
 
