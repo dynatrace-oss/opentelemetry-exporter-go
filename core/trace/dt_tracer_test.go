@@ -5,16 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
 
 func TestDtSpanIsOfDtSpanType(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 
-	tr := otel.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
 	span, ok := s.(*dtSpan)
 
@@ -23,10 +21,9 @@ func TestDtSpanIsOfDtSpanType(t *testing.T) {
 }
 
 func TestDtSpanContainsSdkSpan(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 
-	tr := otel.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
 	span := s.(*dtSpan)
 
@@ -36,10 +33,9 @@ func TestDtSpanContainsSdkSpan(t *testing.T) {
 }
 
 func TestDtSpanContainsValidTracer(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 
-	tr := otel.Tracer("Dynatrace tracer")
 	_, s := tr.Start(context.Background(), "Test span")
 	span := s.(*dtSpan)
 
@@ -47,10 +43,9 @@ func TestDtSpanContainsValidTracer(t *testing.T) {
 }
 
 func TestReturnedContextContainsDtSpan(t *testing.T) {
-	tp := NewTracerProvider()
-	otel.SetTracerProvider(tp)
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 
-	tr := otel.Tracer("Dynatrace tracer")
 	ctx, s := tr.Start(context.Background(), "Test span")
 
 	spanFromCtx := trace.SpanFromContext(ctx)
