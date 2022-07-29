@@ -7,23 +7,29 @@ on:
       sprintVersion:
         required: true
         type: string
-        description: The full sprint version, e.g. 1.245.0
+        description: The sprint version, excluding the patch version, e.g. 1.245
 
 jobs:
   create-release:
+    # Only allow creating new releases from the main branch.
+    if: github.ref_name == 'main'
+
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
       # Will check out the branch, update version.go, and create a new branch and tag.
-      # E.g. if the sprint version is 1.245.0, it will:
-      # - set the "Version" string constant to "1.245.0"
-      # - create a branch named release/1.245.0
-      # - create a tag named v1.245.0
+      # E.g. if the sprint version is 1.245, it will:
+      # - create a branch named release/1.245.x
+      # - set the "Version" string constant to "1.245.1"
+      # - create a tag named v1.245.1
       - name: Create release branch and tag
         # Assign the Action sprintVersion input to the SPRINT_VERSION environment variable.
         env:
-          SPRINT_VERSION: ${{ inputs.sprintVersion }}
+          # The name of the release branch, which is the sprint version appended with a .x suffix, e.g. 1.245.x
+          SPRINT_VERSION: ${{ format('{0}{1}', inputs.sprintVersion, '.x') }}
+          # The full version including patch number, starting at 1 for a new release, e.g. 1.245.1
+          SPRINT_VERSION_WITH_PATCH: ${{ format('{0}{1}', inputs.sprintVersion, '.1') }}
         run: |
           [[ ${{ inputs.sprintVersion }} ]] || { echo "Required input sprintVersion not set, exiting."; exit 1; }
           git config user.name github-actions[bot]
@@ -32,8 +38,8 @@ jobs:
           git checkout -b release/$SPRINT_VERSION
           sh update_version.sh
           git add .
-          git commit -m "Release $SPRINT_VERSION"
-          git tag -a v$SPRINT_VERSION -m "Release $SPRINT_VERSION"
+          git commit -m "Release $SPRINT_VERSION_WITH_PATCH"
+          git tag -a v$SPRINT_VERSION_WITH_PATCH -m "Release $SPRINT_VERSION_WITH_PATCH"
           git push --follow-tags
 
       # Update the Go modules index so that "go get github.com/dynatrace-oss/opentelemetry-exporter-go"
@@ -41,4 +47,6 @@ jobs:
       # Users may install a specific version, e.g. "go get github.com/dynatrace-oss/opentelemetry-exporter-go@v1.245.0"
       - uses: actions/setup-go@v3
       - name: Update Go modules index
-        run: GOPROXY=proxy.golang.org go list -m github.com/dynatrace-oss/opentelemetry-exporter-go@v${{ inputs.sprintVersion }}
+        env:
+          SPRINT_VERSION_WITH_PATCH: ${{ format('{0}{1}', inputs.sprintVersion, '.1') }}
+        run: GOPROXY=proxy.golang.org go list -m github.com/dynatrace-oss/opentelemetry-exporter-go@v$SPRINT_VERSION_WITH_PATCH
