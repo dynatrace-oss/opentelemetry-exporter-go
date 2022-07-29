@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
       # Will check out the branch, update version.go, and create a new branch and tag.
       # E.g. if the sprint version is 1.245, it will:
       # - create a branch named release/1.245.x
       # - set the "Version" string constant to "1.245.1"
       # - create a tag named v1.245.1
+      - uses: actions/checkout@v3
       - name: Create release branch and tag
         # Assign the Action sprintVersion input to the SPRINT_VERSION environment variable.
         env:
@@ -44,7 +44,7 @@ jobs:
 
       # Update the Go modules index so that "go get github.com/dynatrace-oss/opentelemetry-exporter-go"
       # will resolve to the latest tag.
-      # Users may install a specific version, e.g. "go get github.com/dynatrace-oss/opentelemetry-exporter-go@v1.245.0"
+      # Users may install a specific version, e.g. "go get github.com/dynatrace-oss/opentelemetry-exporter-go@v1.245.1"
       - uses: actions/setup-go@v3
       - name: Update Go modules index
         env:
