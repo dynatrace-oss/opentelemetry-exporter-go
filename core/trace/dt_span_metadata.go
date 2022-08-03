@@ -4,6 +4,9 @@ import (
 	"time"
 
 	"core/configuration"
+	"core/fw4"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type sendState int
@@ -31,6 +34,11 @@ type dtSpanMetadata struct {
 	lastSentMs  int64
 	seqNumber   int32
 	options     *transmitOptions
+
+	fw4Tag              *fw4.Fw4Tag
+	lastPropagationTime time.Time
+	tenantParentSpanId  trace.SpanID
+	serverId            int64
 }
 
 type transmitOptions struct {

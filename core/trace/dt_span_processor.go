@@ -7,7 +7,6 @@ import (
 	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 
 	"core/configuration"
 	"core/internal/logger"
@@ -73,32 +72,7 @@ func (p *dtSpanProcessor) onStart(ctx context.Context, s *dtSpan) {
 
 	p.logger.Debugf("Start span %s", span.Name())
 
-	// TODO: Example how to handle parent span context, will be used by Span Enricher
-	parentSpan := trace.SpanFromContext(ctx)
-	if parentDtSpan, ok := parentSpan.(*dtSpan); ok {
-		// Parent span context holds Dynatrace Span started locally by Dynatrace TracerProvider, thus metadata is available
-		p.logger.Debugf("Parent span last sent ms %d", parentDtSpan.metadata.lastSentMs)
-	} else if parentSpan.SpanContext().IsValid() && parentSpan.SpanContext().IsRemote() {
-		// Parent span context holds remote span.
-		// TraceContext Propagator creates remote span by calling trace.ContextWithRemoteSpanContext(ctx, sc) method.
-		// The remote span is nonRecordingSpan with SpanContext extracted via TraceContext TextMapPropagator.
-		//
-		// Important outcome:
-		// Remote span isn't create via a configured Dynatrace TracerProvider, thus it can not be handled by us as an internal span.
-		//
-		// Discuss possible solutions:
-		// Dynatrace propagator on a client side will have to inject metadata(FW4) into tracestate,
-		// thus it can be extracted and processed on server side.
-		json, err := parentSpan.SpanContext().MarshalJSON()
-		if err != nil {
-			p.logger.Infof("Can not serialize Remote SpanContext: %s", err)
-		} else {
-			p.logger.Debugf("SpanContext of Remote Span: %s", string(json))
-		}
-	} else {
-		// Parent span is neither Dynatrace nor Remote span, thus can't be handled by Dynatrace span processor
-		p.logger.Debugf("Span processor can not handle Parent span of %T type", parentSpan)
-	}
+	s.metadata = createSpanMetadata(ctx, span, p.clusterId, p.tenantId)
 
 	if !p.spanWatchlist.add(s) {
 		p.logger.Infof("Span watchlist map is full, can not add metadata for started span: %s", span.Name())

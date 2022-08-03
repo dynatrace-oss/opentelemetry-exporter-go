@@ -21,7 +21,6 @@ func (tr *dtTracer) Start(ctx context.Context, name string, options ...trace.Spa
 	span := &dtSpan{
 		Span: sdkSpan,
 		tracer:  tr,
-		metadata: newDtSpanMetadata(),
 	}
 
 	if sdkSpan.IsRecording() {
