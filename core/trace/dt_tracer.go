@@ -2,9 +2,10 @@ package trace
 
 import (
 	"context"
-	"core/configuration"
 
 	"go.opentelemetry.io/otel/trace"
+
+	"core/configuration"
 )
 
 type dtTracer struct {

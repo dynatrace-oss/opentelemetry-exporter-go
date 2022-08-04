@@ -3,7 +3,9 @@ package trace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
+	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -23,7 +25,13 @@ type DtTracerProvider struct {
 	config         *configuration.DtConfiguration
 }
 
-func NewTracerProvider(config *configuration.DtConfiguration, opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
+func NewTracerProvider(opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
+	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
+	if err != nil {
+		fmt.Println("Dynatrace TracerProvider cannot be instantiated due to a configuration error: " + err.Error())
+		return nil
+	}
+
 	tp := &DtTracerProvider{
 		TracerProvider: sdktrace.NewTracerProvider(opts...),
 		mu:             sync.Mutex{},
@@ -64,7 +72,7 @@ func (p *DtTracerProvider) ForceFlush(ctx context.Context) error {
 		return errInvalidSpanProcessor
 	}
 
-	return p.processor.forceFlush(ctx)
+	return measureExecutionTime(ctx, p.processor.forceFlush, "ForceFlush", p.logger)
 }
 
 // Shutdown stops exporting goroutine and exports all remaining spans to Dynatrace Cluster.
@@ -74,5 +82,28 @@ func (p *DtTracerProvider) Shutdown(ctx context.Context) error {
 		return errInvalidSpanProcessor
 	}
 
-	return p.processor.shutdown(ctx)
+	return measureExecutionTime(ctx, p.processor.shutdown, "Shutdown", p.logger)
+}
+
+// measureExecutionTime measure execution time of a given function
+// and log a warning message if it takes more than a third of the operation timeout
+func measureExecutionTime(ctx context.Context, f func(context.Context) error, opName string, logger *logger.ComponentLogger) error {
+	timeout := time.Millisecond * time.Duration(configuration.DefaultFlushOrShutdownTimeoutMs)
+	deadline, ok := ctx.Deadline()
+	if ok {
+		deadlineTimeout := time.Until(deadline)
+		if timeout > deadlineTimeout {
+			timeout = deadlineTimeout
+		}
+	}
+
+	start := time.Now()
+	err := f(ctx)
+	timeTaken := time.Since(start)
+
+	if timeTaken > (timeout / 3) {
+		logger.Warnf("%s execution took %s which more than a third of the operation timeout %s", opName, timeTaken, timeout)
+	}
+
+	return err
 }

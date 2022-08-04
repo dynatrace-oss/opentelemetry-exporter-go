@@ -7,18 +7,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func setTracerProvider() {
-	otel.SetTracerProvider(NewTracerProvider(&configuration.DtConfiguration{}))
-}
-
 func TestDtSpanMetadataSkipNewNonEndedSpan(t *testing.T) {
-	setTracerProvider()
-	// otel.SetTracerProvider(NewTracerProvider())
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	_, span := tr.Start(context.Background(), "Span A")
 	s := span.(*dtSpan)
@@ -31,9 +25,8 @@ func TestDtSpanMetadataSkipNewNonEndedSpan(t *testing.T) {
 }
 
 func TestDtSpanMetadataSendNonEndedSpanOlderThanUpdateInterval(t *testing.T) {
-	setTracerProvider()
-	// otel.SetTracerProvider(NewTracerProvider())
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	_, span := tr.Start(context.Background(), "Span A")
 	s := span.(*dtSpan)
@@ -47,9 +40,8 @@ func TestDtSpanMetadataSendNonEndedSpanOlderThanUpdateInterval(t *testing.T) {
 }
 
 func TestDtSpanMetadataSendEndedSpan(t *testing.T) {
-	setTracerProvider()
-	// otel.SetTracerProvider(NewTracerProvider())
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	_, span := tr.Start(context.Background(), "Span A")
 	span.End()
@@ -63,9 +55,8 @@ func TestDtSpanMetadataSendEndedSpan(t *testing.T) {
 }
 
 func TestDtSpanMetadataDropNonEndedOutdatedSpan(t *testing.T) {
-	setTracerProvider()
-	// otel.SetTracerProvider(NewTracerProvider())
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	_, span := tr.Start(context.Background(), "Span A")
 	s := span.(*dtSpan)
@@ -79,9 +70,8 @@ func TestDtSpanMetadataDropNonEndedOutdatedSpan(t *testing.T) {
 }
 
 func TestDtSpanMetadataSendSpanAfterKeepAliveInterval(t *testing.T) {
-	setTracerProvider()
-	// otel.SetTracerProvider(NewTracerProvider())
-	tr := otel.Tracer("Dynatrace Tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace Tracer")
 
 	_, span := tr.Start(context.Background(), "Span A")
 	s := span.(*dtSpan)
@@ -102,10 +92,8 @@ func TestDtSpanMetadataSendSpanAfterKeepAliveInterval(t *testing.T) {
 }
 
 func TestDtSpanContainsMetadata(t *testing.T) {
-	setTracerProvider()
-	// otel.SetTracerProvider(NewTracerProvider())
-
-	tr := otel.Tracer("Dynatrace tracer")
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
 	_, span := tr.Start(context.Background(), "Test span")
 	s := span.(*dtSpan)
 
@@ -116,9 +104,13 @@ func TestDtSpanContainsMetadata(t *testing.T) {
 
 func TestNotSampledDtSpanContainMetadata(t *testing.T) {
 	sampler := sdktrace.WithSampler(sdktrace.NeverSample())
-	otel.SetTracerProvider(NewTracerProvider(&configuration.DtConfiguration{}, sampler))
+	tp := NewTracerProvider(sampler)
+	tp.processor.exporter = newTestExporter(testExporterOptions{
+		iterationIntervalMs: 500,
+		numIterations:       1,
+	})
 
-	tr := otel.Tracer("Dynatrace tracer")
+	tr := tp.Tracer("Dynatrace tracer")
 	_, span := tr.Start(context.Background(), "Test span")
 	s := span.(*dtSpan)
 

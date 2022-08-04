@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"core/configuration"
 	"core/internal/logger"
 )
+
+var errInvalidSpanExporter = errors.New("span exporter is invalid")
 
 type flushContext struct {
 	ctx                  context.Context
@@ -31,23 +34,19 @@ type dtSpanProcessor struct {
 	lastFlushRequestContext *flushContext
 	periodicSendOpTimer     *time.Timer
 	logger                  *logger.ComponentLogger
-
-	clusterId int32
-	tenantId  int32
+	config                  *configuration.DtConfiguration
 }
 
 // newDtSpanProcessor creates a Dynatrace span processor that will send spans to Dynatrace Cluster.
 func newDtSpanProcessor(config *configuration.DtConfiguration) *dtSpanProcessor {
 	p := &dtSpanProcessor{
-		exporter:            newDtSpanExporter(),
+		exporter:            newDtSpanExporter(config),
 		spanWatchlist:       newDtSpanWatchlist(configuration.DefaultMaxSpansWatchlistSize),
-		stopExportingCh:     make(chan struct{}),
+		stopExportingCh:     make(chan struct{}, 1),
 		exportingStopped:    0,
 		flushRequestCh:      make(chan *flushContext, 1),
-		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs)),
+		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(config.SpanProcessingIntervalMs)),
 		logger:              logger.NewComponentLogger("SpanProcessor"),
-		clusterId:           config.ClusterId,
-		tenantId:            config.TenantId,
 	}
 
 	p.stopExportingWait.Add(1)
@@ -134,14 +133,19 @@ func (p *dtSpanProcessor) shutdown(ctx context.Context) error {
 	p.shutdownOnce.Do(func() {
 		p.logger.Debugf("Shutting down is called")
 
-		ctx, cancelFlush := context.WithCancel(ctx)
-		defer cancelFlush()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
 		waitShutdown := make(chan struct{})
 		go func() {
-			close(p.stopExportingCh)
+			p.requestStopSpanExportingLoop()
 			p.stopExportingWait.Wait()
-			err = p.exportSpans(ctx, false, exportTypeForceFlush)
+
+			err = p.sendSpansToExport(ctx, false, exportTypeForceFlush)
+			if err != nil {
+				p.logger.Warnf("Shutdown operation has failed: %s", err)
+			}
+
 			p.lastFlushRequestContext = nil
 			close(waitShutdown)
 		}()
@@ -149,10 +153,10 @@ func (p *dtSpanProcessor) shutdown(ctx context.Context) error {
 		// wait until shutdown is finished or the context is cancelled
 		select {
 		case <-waitShutdown:
-			p.logger.Debug("Shutdown operation has been finished")
-		case <-time.After(time.Millisecond * configuration.DefaultForceFlushTimeoutMs):
-			p.logger.Warn("Flush operation timeout is reached")
-			cancelFlush()
+			p.logger.Debug("Shutdown operation is finished")
+		case <-time.After(time.Millisecond * configuration.DefaultFlushOrShutdownTimeoutMs):
+			p.logger.Warn("Shutdown operation timeout is reached")
+			cancel()
 			err = ctx.Err()
 		case <-ctx.Done():
 			err = ctx.Err()
@@ -167,13 +171,13 @@ func (p *dtSpanProcessor) shutdown(ctx context.Context) error {
 // flush call.
 func (p *dtSpanProcessor) forceFlush(ctx context.Context) error {
 	if p.isExportingStopped() {
-		p.logger.Debug("The processor is already shut down, ignore flush call")
+		p.logger.Debug("Ignore Flush operation, exporting is stopped")
 		return nil
 	}
 
 	p.logger.Debug("Force flush is called")
-	ctx, cancelFlush := context.WithCancel(ctx)
-	defer cancelFlush()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	flushCtx := &flushContext{
 		flushRequestFinished: make(chan struct{}),
 		ctx:                  ctx,
@@ -196,14 +200,14 @@ func (p *dtSpanProcessor) forceFlush(ctx context.Context) error {
 	}
 
 	select {
-	case <-time.After(time.Millisecond * configuration.DefaultForceFlushTimeoutMs):
+	case <-time.After(time.Millisecond * configuration.DefaultFlushOrShutdownTimeoutMs):
 		// the flush operation SHOULD abort any in-progress send operation,
 		// thus cancel flush context to inform exporting goroutine
-		cancelFlush()
+		cancel()
 		flushCtx.err = ctx.Err()
-		p.logger.Warnf("Flush operation timeout is reached")
+		p.logger.Warn("Flush operation timeout is reached")
 	case <-flushCtx.flushRequestFinished:
-		p.logger.Debug("Flush operation has been finished")
+		p.logger.Debug("Flush operation is finished")
 	case <-ctx.Done():
 		flushCtx.err = ctx.Err()
 		p.logger.Warnf("Context of flush operation has been cancelled: %s", ctx.Err())
@@ -219,11 +223,11 @@ func (p *dtSpanProcessor) runSpanExportingLoop() {
 		select {
 		case <-p.stopExportingCh:
 			atomic.StoreInt32(&p.exportingStopped, 1)
-			p.logger.Debug("The shutdown has been requested, stop exporting loop")
+			p.logger.Debug("Finish exporting loop")
 			return
 		case <-p.periodicSendOpTimer.C:
 			p.logger.Debug("Execute periodic send operation...")
-			err := p.exportSpans(context.Background(), true, exportTypePeriodic)
+			err := p.sendSpansToExport(context.Background(), true, exportTypePeriodic)
 			if err != nil {
 				p.logger.Warnf("Periodic send operation has failed: %s", err)
 			}
@@ -234,9 +238,9 @@ func (p *dtSpanProcessor) runSpanExportingLoop() {
 				<-p.periodicSendOpTimer.C
 			}
 
-			flushCtx.err = p.exportSpans(flushCtx.ctx, true, exportTypeForceFlush)
+			flushCtx.err = p.sendSpansToExport(flushCtx.ctx, true, exportTypeForceFlush)
 			if flushCtx.err != nil {
-				p.logger.Warnf("flush send operation has failed: %s", flushCtx.err)
+				p.logger.Warnf("Flush send operation has failed: %s", flushCtx.err)
 			}
 
 			close(flushCtx.flushRequestFinished)
@@ -248,15 +252,40 @@ func (p *dtSpanProcessor) isExportingStopped() bool {
 	return atomic.LoadInt32(&p.exportingStopped) == 1
 }
 
-// exportSpans collect spans that are ready to be exported and pass them to Dynatrace spans exporter
-func (p *dtSpanProcessor) exportSpans(ctx context.Context, resetPeriodicSendOpTimer bool, t exportType) error {
-	p.logger.Debugf("Spans export is called. export type: %d", t)
+// requestStopSpanExportingLoop send request to stop span exporting loop
+func (p *dtSpanProcessor) requestStopSpanExportingLoop() {
+	select {
+	case p.stopExportingCh <- struct{}{}:
+		p.logger.Debug("Stop exporting is requested")
+	default:
+		p.logger.Debug("Stop exporting has been already requested")
+	}
+}
+
+// sendSpansToExport collect spans that are ready to be exported and pass them to Dynatrace Span Exporter
+func (p *dtSpanProcessor) sendSpansToExport(ctx context.Context, resetPeriodicSendOpTimer bool, t exportType) error {
+	p.logger.Debugf("Preparing spans to export. Export type: %d", t)
+
 	if resetPeriodicSendOpTimer {
 		// reset periodic send operation timer at the end of the send operation since
 		// the time the operation takes must increase the update interval
-		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(configuration.DefaultUpdateIntervalMs))
+		defer p.periodicSendOpTimer.Reset(time.Millisecond * time.Duration(p.config.SpanProcessingIntervalMs))
 	}
 
-	spans := p.spanWatchlist.getSpansToExport()
-	return p.exporter.export(ctx, spans)
+	if p.exporter == nil {
+		p.logger.Debugf("Can not perform exporting operation, Span Exporter is not initialized")
+		return errInvalidSpanExporter
+	}
+
+	start := time.Now()
+	err := p.exporter.export(ctx, t, p.spanWatchlist.getSpansToExport())
+	p.logger.Debugf("Export operation took %s", time.Since(start))
+
+	if err == errNotAuthorizedRequest {
+		// not authorized request can be fixed only if the auth token is changed, thus stop exporting loop
+		p.logger.Debugf("Stop exporting loop because span export request is not authorized")
+		p.requestStopSpanExportingLoop()
+	}
+
+	return err
 }

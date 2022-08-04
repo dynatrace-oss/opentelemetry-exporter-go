@@ -3,44 +3,92 @@ package trace
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"core/configuration"
 )
 
-type testExporter struct {
-	exportingFinished   chan bool
-	iterationIntervalMs int
-	numIterations       int
+var testConfig *configuration.DtConfiguration
+
+func TestMain(m *testing.M) {
+	defer os.Clearenv()
+
+	os.Setenv("DT_CLUSTER_ID", "123")
+	os.Setenv("DT_TENANT", "testTenant")
+	os.Setenv("DT_CONNECTION_BASE_URL", "https://example.com")
+	os.Setenv("DT_CONNECTION_AUTH_TOKEN", "testAuthToken")
+	os.Setenv("DT_LOGGING_DESTINATION", "stdout")
+	os.Setenv("DT_LOGGING_GO_FLAGS", "SpanExporter=true,SpanProcessor=true,TracerProvider=true")
+
+	var err error
+	testConfig, err = configuration.GlobalConfigurationProvider.GetConfiguration()
+	if err != nil {
+		fmt.Println("Can not get test configurations: " + err.Error())
+	}
+
+	m.Run()
 }
 
-func (e *testExporter) export(ctx context.Context, _ dtSpanSet) (err error) {
-	for i := e.numIterations; i > 0; i-- {
+type testExporterOptions struct {
+	// duration of a single iteration
+	iterationIntervalMs int
+	// number of iterations per export call
+	numIterations int
+}
+
+// testExporter test exporter that executes dummy iterations based on given options
+type testExporter struct {
+	option testExporterOptions
+}
+
+func (e *testExporter) export(ctx context.Context, _ exportType, _ dtSpanSet) (err error) {
+	for i := e.option.numIterations; i > 0; i-- {
 		// simulate exporting operation
-		time.Sleep(time.Millisecond * time.Duration(e.iterationIntervalMs))
+		time.Sleep(time.Millisecond * time.Duration(e.option.iterationIntervalMs))
 
 		if err = ctx.Err(); err != nil {
 			break
 		}
 	}
 
-	e.exportingFinished <- true
 	return
 }
 
-type spanGeneratorOption struct {
+func newTestExporter(o testExporterOptions) *testExporter {
+	return &testExporter{
+		option: o,
+	}
+}
+
+// newDtTracerProviderWithTestExporter create Dynatrace Tracer Provider with testExporter
+func newDtTracerProviderWithTestExporter() (*DtTracerProvider, *testExporter) {
+	defaultTextExporterOptions := testExporterOptions{
+		iterationIntervalMs: 500,
+		numIterations:       1,
+	}
+
+	if tp := NewTracerProvider(); tp != nil {
+		exporter := newTestExporter(defaultTextExporterOptions)
+		tp.processor.exporter = exporter
+
+		return tp, exporter
+	}
+
+	return nil, nil
+}
+
+type spanGeneratorOptions struct {
 	numSpans   int
 	endedSpans bool
 }
 
-func generateSpans(tr trace.Tracer, option spanGeneratorOption) {
+func generateSpans(tr trace.Tracer, option spanGeneratorOptions) {
 	wg := &sync.WaitGroup{}
 	for i := 0; i < option.numSpans; i++ {
 		wg.Add(1)
@@ -57,29 +105,21 @@ func generateSpans(tr trace.Tracer, option spanGeneratorOption) {
 	wg.Wait()
 }
 
-func createSpanProcessor() *dtSpanProcessor {
-	return newDtSpanProcessor(&configuration.DtConfiguration{})
-}
-
-func createTracerProvider() *DtTracerProvider {
-	return NewTracerProvider(&configuration.DtConfiguration{})
-}
-
 func TestDtSpanProcessorStartSpans(t *testing.T) {
-	tp := createTracerProvider()
+	tp, _ := newDtTracerProviderWithTestExporter()
+
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
-	otel.SetTracerProvider(tp)
-	tr := otel.Tracer("Dynatrace Tracer")
+	tr := tp.Tracer("Dynatrace Tracer")
 
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   20,
 		endedSpans: true,
 	})
 	require.EqualValues(t, tp.processor.spanWatchlist.len(), 20)
 
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   5,
 		endedSpans: true,
 	})
@@ -87,7 +127,7 @@ func TestDtSpanProcessorStartSpans(t *testing.T) {
 }
 
 func TestDtSpanProcessorShutdown(t *testing.T) {
-	p := createSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	require.Zero(t, p.exportingStopped)
 	require.Zero(t, p.spanWatchlist.len())
 
@@ -97,14 +137,14 @@ func TestDtSpanProcessorShutdown(t *testing.T) {
 }
 
 func TestDtSpanProcessorGenerateSpansAndShutdown(t *testing.T) {
-	tp := createTracerProvider()
+	tp, _ := newDtTracerProviderWithTestExporter()
+
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
-	otel.SetTracerProvider(tp)
-	tr := otel.Tracer("Dynatrace Tracer")
+	tr := tp.Tracer("Dynatrace Tracer")
 
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   20,
 		endedSpans: true,
 	})
@@ -120,7 +160,7 @@ func TestDtSpanProcessorShutdownCancelContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	p := createSpanProcessor()
+	p := newDtSpanProcessor(testConfig)
 	require.Zero(t, p.exportingStopped)
 
 	err := p.shutdown(ctx)
@@ -128,42 +168,30 @@ func TestDtSpanProcessorShutdownCancelContext(t *testing.T) {
 }
 
 func TestDtSpanProcessorShutdownTimeoutReached(t *testing.T) {
-	exporter := &testExporter{
-		exportingFinished:   make(chan bool, 1),
+	p := newDtSpanProcessor(testConfig)
+	p.exporter = newTestExporter(testExporterOptions{
 		iterationIntervalMs: 500,
 		numIterations:       20,
-	}
-
-	p := createSpanProcessor()
-	p.exporter = exporter
+	})
 	require.Zero(t, p.exportingStopped)
 
 	err := p.shutdown(context.Background())
 	require.ErrorIs(t, err, context.Canceled)
-
-	// check whether the exporting operation was aborted due to the reached flush timeout
-	select {
-	case <-exporter.exportingFinished:
-		log.Println("Long running export operation has been aborted")
-	// the exporter must finish exporting within the next interval due to canceled context caused by the flush timeout
-	case <-time.After(time.Millisecond * time.Duration(exporter.iterationIntervalMs*2)):
-		require.Fail(t, "Exporter operation has not been aborted after the flush timeout reached")
-	}
 }
 
 func TestDtSpanProcessorForceFlushNonEndedSpan(t *testing.T) {
-	tp := createTracerProvider()
+	tp, _ := newDtTracerProviderWithTestExporter()
+
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
-	otel.SetTracerProvider(tp)
-	tr := otel.Tracer("Dynatrace Tracer")
+	tr := tp.Tracer("Dynatrace Tracer")
 
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   20,
 		endedSpans: true,
 	})
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   5,
 		endedSpans: false,
 	})
@@ -178,69 +206,42 @@ func TestDtSpanProcessorForceFlushCancelContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	exporter := &testExporter{
-		exportingFinished:   make(chan bool, 1),
+	p := newDtSpanProcessor(testConfig)
+	p.exporter = newTestExporter(testExporterOptions{
 		iterationIntervalMs: 500,
 		numIterations:       20,
-	}
+	})
 
-	p := createSpanProcessor()
-	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
 	err := p.forceFlush(ctx)
 	require.ErrorIs(t, err, context.Canceled)
-
-	// check whether the exporting operation was aborted due to canceled force flush context
-	select {
-	case <-exporter.exportingFinished:
-		log.Println("Long running export operation has been aborted")
-	// the exporter must finish exporting operation within the next interval due to canceled flush context
-	case <-time.After(time.Millisecond * time.Duration(exporter.iterationIntervalMs*2)):
-		require.Fail(t, "The export operation was not aborted prior to reaching the flush timeout")
-	}
 }
 
 func TestDtSpanProcessorForceFlushTimeoutReached(t *testing.T) {
-	exporter := &testExporter{
-		exportingFinished:   make(chan bool, 1),
+	p := newDtSpanProcessor(testConfig)
+	p.exporter = newTestExporter(testExporterOptions{
 		iterationIntervalMs: 500,
 		numIterations:       20,
-	}
+	})
 
-	p := createSpanProcessor()
-	p.exporter = exporter
 	require.Zero(t, p.exportingStopped)
 
 	err := p.forceFlush(context.Background())
 	require.ErrorIs(t, err, context.Canceled)
-
-	// check whether the exporting operation was aborted due to the reached flush timeout
-	select {
-	case <-exporter.exportingFinished:
-		log.Println("Long running export operation has been aborted")
-	// the exporter must finish exporting within the next interval due to canceled context caused by the flush timeout
-	case <-time.After(time.Millisecond * time.Duration(exporter.iterationIntervalMs*2)):
-		require.Fail(t, "The export operation was not aborted prior to reaching the flush timeout")
-	}
 }
 
 func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
-	exporter := &testExporter{
-		exportingFinished:   make(chan bool, 5),
-		iterationIntervalMs: 500,
-		numIterations:       4,
-	}
+	tp, exporter := newDtTracerProviderWithTestExporter()
+	exporter.option.iterationIntervalMs = 500
+	exporter.option.numIterations = 4
 
-	tp := createTracerProvider()
-	tp.processor.exporter = exporter
 	require.Zero(t, tp.processor.exportingStopped)
 	require.Zero(t, tp.processor.spanWatchlist.len())
 
-	otel.SetTracerProvider(tp)
-	tr := otel.Tracer("Dynatrace Tracer")
+	tr := tp.Tracer("Dynatrace Tracer")
 
-	generateSpans(tr, spanGeneratorOption{
+	generateSpans(tr, spanGeneratorOptions{
 		numSpans:   5,
 		endedSpans: true,
 	})
@@ -264,7 +265,7 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 		wg.Add(1)
 		defer wg.Done()
 
-		generateSpans(tr, spanGeneratorOption{
+		generateSpans(tr, spanGeneratorOptions{
 			numSpans:   10,
 			endedSpans: true,
 		})
@@ -281,7 +282,7 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 		wg.Add(1)
 		defer wg.Done()
 
-		generateSpans(tr, spanGeneratorOption{
+		generateSpans(tr, spanGeneratorOptions{
 			numSpans:   5,
 			endedSpans: true,
 		})

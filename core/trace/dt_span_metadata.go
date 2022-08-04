@@ -47,14 +47,14 @@ type transmitOptions struct {
 	openSpanTimeoutMs   int64
 }
 
-func newDtSpanMetadata() *dtSpanMetadata {
+func newDtSpanMetadata(spanProcessingIntervalMs int64) *dtSpanMetadata {
 	return &dtSpanMetadata{
 		sendState:   sendStateNew,
 		firstSeenMs: time.Now().UnixNano() / int64(time.Millisecond),
 		lastSentMs:  0,
 		seqNumber:   -1,
 		options: &transmitOptions{
-			updateIntervalMs:    configuration.DefaultUpdateIntervalMs,
+			updateIntervalMs:    spanProcessingIntervalMs,
 			keepAliveIntervalMs: configuration.DefaultKeepAliveIntervalMs,
 			openSpanTimeoutMs:   configuration.DefaultOpenSpanTimeoutMs,
 		},
