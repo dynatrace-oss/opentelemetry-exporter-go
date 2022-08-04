@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
 	"core/fw4"
@@ -16,13 +15,13 @@ const fw4TagKey fw4TagKeyType = iota
 
 func createSpanMetadata(
 	ctx context.Context,
-	span sdktrace.ReadOnlySpan,
+	span trace.Span,
 	clusterId,
 	tenantId int32,
 ) *dtSpanMetadata {
 	metadata := newDtSpanMetadata()
 
-	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdFromParentSpanContext(span, ctx)
+	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdAndTagFromParentSpanContext(ctx)
 	metadata.tenantParentSpanId = tenantParentSpanId
 
 	// No FW4Tag was found for the parent span, so create one.
@@ -39,8 +38,8 @@ func createSpanMetadata(
 	return metadata
 }
 
-func extractTenantParentSpanIdFromParentSpanContext(span sdktrace.ReadOnlySpan, ctx context.Context) (trace.SpanID, *fw4.Fw4Tag) {
-	parentSpanContext := span.Parent()
+func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (trace.SpanID, *fw4.Fw4Tag) {
+	parentSpanContext := trace.SpanFromContext(ctx).SpanContext()
 	parentSpanMetaData := getParentSpanMetadata(ctx)
 
 	if parentSpanContext.IsRemote() {

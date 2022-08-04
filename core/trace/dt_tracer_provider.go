@@ -20,6 +20,7 @@ type DtTracerProvider struct {
 	wrappedTracers map[trace.Tracer]*dtTracer
 	processor      *dtSpanProcessor
 	logger         *logger.ComponentLogger
+	config         *configuration.DtConfiguration
 }
 
 func NewTracerProvider(config *configuration.DtConfiguration, opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
@@ -29,6 +30,7 @@ func NewTracerProvider(config *configuration.DtConfiguration, opts ...sdktrace.T
 		wrappedTracers: make(map[trace.Tracer]*dtTracer),
 		processor:      newDtSpanProcessor(config),
 		logger:         logger.NewComponentLogger("TracerProvider"),
+		config:         config,
 	}
 
 	tp.logger.Debug("TracerProvider created")
@@ -47,6 +49,7 @@ func (p *DtTracerProvider) Tracer(name string, opts ...trace.TracerOption) trace
 		tr = &dtTracer{
 			Tracer:   sdkTracer,
 			provider: p,
+			config:   p.config,
 		}
 		p.wrappedTracers[sdkTracer] = tr
 		p.logger.Debugf("Tracer '%s' created", name)
