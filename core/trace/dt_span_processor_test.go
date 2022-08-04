@@ -248,8 +248,8 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 
 	var wg sync.WaitGroup
 
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		tp.ForceFlush(context.Background())
@@ -261,8 +261,8 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 		return len(tp.processor.flushRequestCh) == 0 && tp.processor.spanWatchlist.len() == 0
 	}, 3*time.Second, 100*time.Millisecond)
 
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		generateSpans(tr, spanGeneratorOptions{
@@ -278,8 +278,8 @@ func TestDtSpanProcessorWaitForScheduledFlushOperation(t *testing.T) {
 		return len(tp.processor.flushRequestCh) == 1 && tp.processor.spanWatchlist.len() == 10
 	}, 3*time.Second, 100*time.Millisecond)
 
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		generateSpans(tr, spanGeneratorOptions{

@@ -17,11 +17,13 @@ jobs:
         uses: golangci/golangci-lint-action@v3.2.0
         with:
           working-directory: core
+          args: --verbose
 
       - name: Lint samples module
         uses: golangci/golangci-lint-action@v3.2.0
         with:
           working-directory: samples
+          args: --verbose
 
   build:
     name: Build

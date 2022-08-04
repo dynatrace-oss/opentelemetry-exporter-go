@@ -6,6 +6,7 @@ type serverIdKeyType int
 const serverIdKey serverIdKeyType = iota
 
 // This will be called from the Dynatrace propagator
+//nolint:deadcode,unused
 func setServerIdOnContext(ctx context.Context, serverId int32) context.Context {
 	return context.WithValue(ctx, serverIdKey, serverId)
 }

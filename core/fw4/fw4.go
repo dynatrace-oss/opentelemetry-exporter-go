@@ -95,8 +95,7 @@ func (fw4 Fw4Tag) String() string {
 
 	if len(fw4.CustomBlob) > 0 {
 		sb.WriteString("+b=")
-		hex.NewEncoder(&sb).Write([]byte(fw4.CustomBlob))
-
+		hex.NewEncoder(&sb).Write([]byte(fw4.CustomBlob)) //nolint:errcheck
 	}
 
 	if fw4.tagDepth != 0 {

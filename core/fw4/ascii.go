@@ -268,6 +268,7 @@ func (fw4 Fw4Tag) ToTracestateEntryValue() string {
 	return sb.String()
 }
 
+//nolint:errcheck
 func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 	hasExt := false
 	var extSb strings.Builder
@@ -292,7 +293,6 @@ func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 	if len(fw4.CustomBlob) > 0 {
 		beginExtField(tlvIdCustomBlob)
 		hex.NewEncoder(&extSb).Write([]byte(fw4.CustomBlob))
-
 	}
 
 	if fw4.HasTagDepth() {

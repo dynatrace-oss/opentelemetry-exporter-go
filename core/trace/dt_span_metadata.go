@@ -38,7 +38,6 @@ type dtSpanMetadata struct {
 	fw4Tag              *fw4.Fw4Tag
 	lastPropagationTime time.Time
 	tenantParentSpanId  trace.SpanID
-	serverId            int64
 }
 
 type transmitOptions struct {

@@ -48,7 +48,7 @@ func TestDtSpanExporterPerformHTTPRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, body, []byte{10, 20, 30})
 
-		rw.Write([]byte(`Ok`))
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
 	}))
 
 	config := &configuration.DtConfiguration{
@@ -77,7 +77,7 @@ func TestDtSpanExporterPerformHTTPRequestWithReachedFlushOperationTimeout(t *tes
 	testServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// sleep to reach flush operation timeout
 		time.Sleep(time.Millisecond * time.Duration(configuration.DefaultFlushExportConnTimeoutMs+configuration.DefaultFlushExportDataTimeoutMs+100))
-		rw.Write([]byte(`Ok`))
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
 	}))
 
 	config := &configuration.DtConfiguration{
