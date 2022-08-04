@@ -3,6 +3,7 @@ package trace
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"core/configuration"
+	"core/internal/version"
 )
 
 func TestDtSpanExporterVerifyNewRequest(t *testing.T) {
@@ -23,7 +25,7 @@ func TestDtSpanExporterVerifyNewRequest(t *testing.T) {
 	require.Equal(t, req.URL.String(), "https://example.com/odin/v1/spans")
 	require.Equal(t, req.Header.Get("Content-Type"), "application/x-dt-span-export")
 	require.Equal(t, req.Header.Get("Authorization"), "Dynatrace testAuthToken")
-	require.Equal(t, req.Header.Get("User-Agent"), "odin-go/0.0.1.20220701-000000 0x4d65822107fcfd52 testTenant")
+	require.Equal(t, req.Header.Get("User-Agent"), fmt.Sprintf("odin-go/%s 0x4d65822107fcfd52 testTenant", version.FullVersion))
 	require.Equal(t, req.Header.Get("Accept"), "*/*; q=0")
 	require.EqualValues(t, req.ContentLength, 5)
 
@@ -38,7 +40,7 @@ func TestDtSpanExporterPerformHTTPRequest(t *testing.T) {
 		require.Equal(t, req.Method, "POST")
 		require.Equal(t, req.Header.Get("Content-Type"), "application/x-dt-span-export")
 		require.Equal(t, req.Header.Get("Authorization"), "Dynatrace testDtToken")
-		require.Equal(t, req.Header.Get("User-Agent"), "odin-go/0.0.1.20220701-000000 0x000000000000000a testDtTenant")
+		require.Equal(t, req.Header.Get("User-Agent"), fmt.Sprintf("odin-go/%s 0x000000000000000a testDtTenant", version.FullVersion))
 		require.Equal(t, req.Header.Get("Accept"), "*/*; q=0")
 		require.EqualValues(t, req.ContentLength, 3)
 

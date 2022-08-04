@@ -47,6 +47,7 @@ func newDtSpanProcessor(config *configuration.DtConfiguration) *dtSpanProcessor 
 		flushRequestCh:      make(chan *flushContext, 1),
 		periodicSendOpTimer: time.NewTimer(time.Millisecond * time.Duration(config.SpanProcessingIntervalMs)),
 		logger:              logger.NewComponentLogger("SpanProcessor"),
+		config:              config,
 	}
 
 	p.stopExportingWait.Add(1)

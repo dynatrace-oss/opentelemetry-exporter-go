@@ -22,9 +22,14 @@ func (tr *dtTracer) Start(ctx context.Context, name string, options ...trace.Spa
 
 	sdkCtx, sdkSpan := tr.Tracer.Start(parentCtx, name, options...)
 	span := &dtSpan{
-		Span:     sdkSpan,
-		tracer:   tr,
-		metadata: createSpanMetadata(ctx, sdkSpan, tr.config.ClusterId, tr.config.TenantId),
+		Span:   sdkSpan,
+		tracer: tr,
+		metadata: createSpanMetadata(
+			ctx,
+			sdkSpan,
+			tr.config.ClusterId,
+			tr.config.TenantId,
+			int64(tr.config.SpanProcessingIntervalMs)),
 	}
 
 	if sdkSpan.IsRecording() {

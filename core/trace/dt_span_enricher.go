@@ -18,8 +18,9 @@ func createSpanMetadata(
 	span trace.Span,
 	clusterId,
 	tenantId int32,
+	spanProcessingIntervalMs int64,
 ) *dtSpanMetadata {
-	metadata := newDtSpanMetadata()
+	metadata := newDtSpanMetadata(spanProcessingIntervalMs)
 
 	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdAndTagFromParentSpanContext(ctx)
 	metadata.tenantParentSpanId = tenantParentSpanId

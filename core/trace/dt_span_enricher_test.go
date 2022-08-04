@@ -2,7 +2,7 @@ package trace
 
 import (
 	"context"
-	"core/configuration"
+	// "core/configuration"
 	"core/fw4"
 	"testing"
 
@@ -11,11 +11,8 @@ import (
 	trace "go.opentelemetry.io/otel/trace"
 )
 
-func createTracer(clusterId, tenantId int32) trace.Tracer {
-	otel.SetTracerProvider(NewTracerProvider(&configuration.DtConfiguration{
-		ClusterId: clusterId,
-		TenantId: tenantId,
-	}))
+func createTracer() trace.Tracer {
+	otel.SetTracerProvider(NewTracerProvider())
 	return otel.Tracer("Test tracer")
 }
 
@@ -51,18 +48,18 @@ func TestCreateFw4Tag(t *testing.T) {
 }
 
 func TestSpanHasMetadata(t *testing.T) {
-	tracer := createTracer(1, 2)
+	tracer := createTracer()
 	_, span := tracer.Start(context.Background(), "test span name")
 
 	metadata := span.(*dtSpan).metadata
 	assert.NotNil(t, metadata)
 	assert.NotNil(t, metadata.fw4Tag)
-	assert.Equal(t, int32(1), metadata.fw4Tag.ClusterID)
-	assert.Equal(t, int32(2), metadata.fw4Tag.TenantID)
+	assert.Equal(t, tracer.(*dtTracer).config.ClusterId, metadata.fw4Tag.ClusterID)
+	assert.Equal(t, tracer.(*dtTracer).config.TenantId, metadata.fw4Tag.TenantID)
 }
 
 func TestCreateSpanMetadata_WithParentSpan(t *testing.T) {
-	tracer := createTracer(1, 2)
+	tracer := createTracer()
 	ctx, parentSpan := tracer.Start(context.Background(), "parent span")
 	parentDtSpan := parentSpan.(*dtSpan)
 
@@ -73,8 +70,8 @@ func TestCreateSpanMetadata_WithParentSpan(t *testing.T) {
 	childMetadata := childDtSpan.metadata
 
 	assert.Equal(t, parentSpan.SpanContext().SpanID(), childMetadata.tenantParentSpanId)
-	assert.Equal(t, childMetadata.fw4Tag.ClusterID, int32(1))
-	assert.Equal(t, childMetadata.fw4Tag.TenantID, int32(2))
+	assert.Equal(t, childMetadata.fw4Tag.ClusterID, tracer.(*dtTracer).config.ClusterId)
+	assert.Equal(t, childMetadata.fw4Tag.TenantID, tracer.(*dtTracer).config.TenantId)
 	assert.Equal(t, childMetadata.fw4Tag, parentMetadata.fw4Tag, "Pointer to FW4Tag of child should be equal to parent")
 	assert.True(t, childMetadata.lastPropagationTime.IsZero())
 	assert.True(t, !parentMetadata.lastPropagationTime.IsZero())

@@ -2,7 +2,6 @@ package trace
 
 import (
 	"context"
-	"core/configuration"
 	"testing"
 	"time"
 
