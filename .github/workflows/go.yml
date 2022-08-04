@@ -1,10 +1,28 @@
 name: Build and test
+
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Lint core module
+        uses: golangci/golangci-lint-action@v3.2.0
+        with:
+          working-directory: core
+
+      - name: Lint samples module
+        uses: golangci/golangci-lint-action@v3.2.0
+        with:
+          working-directory: samples
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -16,11 +34,14 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3.2.0
+      - name: Build core module
+        working-directory: core
+        run: go build -v ./...
 
-      - name: Build
-        run: go build -v .
+      - name: Build samples module
+        working-directory: samples
+        run: go build -v ./...
 
       - name: Test
         run: cd core && go test -v ./...
+
