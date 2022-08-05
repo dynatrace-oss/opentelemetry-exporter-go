@@ -17,15 +17,28 @@ import (
 )
 
 func TestDtSpanExporterVerifyNewRequest(t *testing.T) {
-	exporter := newDtSpanExporter(testConfig).(*dtSpanExporterImpl)
+	config := &configuration.DtConfiguration{
+		ClusterId:                -1234,
+		Tenant:                   "testTenant",
+		AgentId:                  10,
+		BaseUrl:                  "https://example.com",
+		AuthToken:                "testDtToken",
+		SpanProcessingIntervalMs: configuration.DefaultSpanProcessingIntervalMs,
+		LoggingDestination:       configuration.LoggingDestination_Stdout,
+		LoggingFlags:             "SpanExporter=true,SpanProcessor=true,TracerProvider=true",
+		RumClientIpHeaders:       nil,
+		DebugAddStackOnStart:     false,
+	}
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
 	req, err := exporter.newRequest(context.Background(), bytes.NewBuffer([]byte{1, 2, 3, 4, 5}))
 
 	require.NoError(t, err)
 	require.Equal(t, req.Method, "POST")
 	require.Equal(t, req.URL.String(), "https://example.com/odin/v1/spans")
 	require.Equal(t, req.Header.Get("Content-Type"), "application/x-dt-span-export")
-	require.Equal(t, req.Header.Get("Authorization"), "Dynatrace testAuthToken")
-	require.Equal(t, req.Header.Get("User-Agent"), fmt.Sprintf("odin-go/%s 0x4d65822107fcfd52 testTenant", version.FullVersion))
+	require.Equal(t, req.Header.Get("Authorization"), "Dynatrace testDtToken")
+	require.Equal(t, req.Header.Get("User-Agent"), fmt.Sprintf("odin-go/%s 0x000000000000000a testTenant", version.FullVersion))
 	require.Equal(t, req.Header.Get("Accept"), "*/*; q=0")
 	require.EqualValues(t, req.ContentLength, 5)
 

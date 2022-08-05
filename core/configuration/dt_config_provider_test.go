@@ -85,7 +85,7 @@ func TestConfigurationViaEnvironment_EmptyConfigFile(t *testing.T) {
 	// even if the config file is empty or does not exist.
 	assert.Equal(t, config.ClusterId, int32(123))
 	assert.Equal(t, config.Tenant, "tenant")
-	assert.Equal(t, config.TenantId, int32(1238414539))
+	assert.Equal(t, config.TenantId(), int32(1238414539))
 	assert.Equal(t, config.BaseUrl, "http://1111:2222")
 	assert.Equal(t, config.AuthToken, "authToken")
 	assert.Equal(t, config.SpanProcessingIntervalMs, 999)
@@ -114,7 +114,7 @@ func TestConfigurationViaEnvironment_NonEmptyConfigFile(t *testing.T) {
 	// even if the values are defined in the config file.
 	assert.Equal(t, config.ClusterId, int32(123))
 	assert.Equal(t, config.Tenant, "tenant")
-	assert.Equal(t, config.TenantId, int32(1238414539))
+	assert.Equal(t, config.TenantId(), int32(1238414539))
 	assert.Equal(t, config.BaseUrl, "http://1111:2222")
 	assert.Equal(t, config.AuthToken, "authToken")
 	assert.Equal(t, config.SpanProcessingIntervalMs, 999)
