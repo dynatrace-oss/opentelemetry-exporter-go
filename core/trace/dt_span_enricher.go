@@ -11,6 +11,7 @@ import (
 )
 
 type fw4TagKeyType int
+
 const fw4TagKey fw4TagKeyType = iota
 
 func createSpanMetadata(
@@ -20,8 +21,9 @@ func createSpanMetadata(
 	tenantId int32,
 	spanProcessingIntervalMs int64,
 ) *dtSpanMetadata {
-	metadata := newDtSpanMetadata(spanProcessingIntervalMs)
+	markParentSpanPropagatedNow(ctx)
 
+	metadata := newDtSpanMetadata(spanProcessingIntervalMs)
 	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdAndTagFromParentSpanContext(ctx)
 	metadata.tenantParentSpanId = tenantParentSpanId
 
@@ -40,8 +42,8 @@ func createSpanMetadata(
 }
 
 func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (trace.SpanID, *fw4.Fw4Tag) {
-	parentSpanContext := trace.SpanFromContext(ctx).SpanContext()
-	parentSpanMetaData := getParentSpanMetadata(ctx)
+	parentSpan := trace.SpanFromContext(ctx)
+	parentSpanContext := parentSpan.SpanContext()
 
 	if parentSpanContext.IsRemote() {
 		// For remote parent spans, the FW4 tag is stored in the context, and no metadata will exist.
@@ -49,8 +51,7 @@ func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (
 			return fw4Tag.SpanID, fw4Tag
 		}
 	} else {
-		if parentSpanMetaData != nil {
-			parentSpanMetaData.lastPropagationTime = time.Now()
+		if parentSpanMetaData := getParentSpanMetadata(parentSpan); parentSpanMetaData != nil {
 			return parentSpanContext.SpanID(), parentSpanMetaData.fw4Tag
 		}
 		return parentSpanContext.SpanID(), nil
@@ -58,12 +59,22 @@ func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (
 	return trace.SpanID{}, nil
 }
 
-func getParentSpanMetadata(ctx context.Context) *dtSpanMetadata {
-	parentSpan := trace.SpanFromContext(ctx)
+func getParentSpanMetadata(parentSpan trace.Span) *dtSpanMetadata {
 	if parentDtSpan, ok := parentSpan.(*dtSpan); ok {
 		return parentDtSpan.metadata
 	}
 	return nil
+}
+
+func getParentSpanMetadataFromContext(ctx context.Context) *dtSpanMetadata {
+	parentSpan := trace.SpanFromContext(ctx)
+	return getParentSpanMetadata(parentSpan)
+}
+
+func markParentSpanPropagatedNow(ctx context.Context) {
+	if parentMetadata := getParentSpanMetadataFromContext(ctx); parentMetadata != nil {
+		parentMetadata.markPropagatedNow()
+	}
 }
 
 func getFw4TagFromContext(ctx context.Context) *fw4.Fw4Tag {

@@ -1,6 +1,7 @@
 package trace
 
 import (
+	"sync"
 	"time"
 
 	"core/configuration"
@@ -38,6 +39,8 @@ type dtSpanMetadata struct {
 	fw4Tag              *fw4.Fw4Tag
 	lastPropagationTime time.Time
 	tenantParentSpanId  trace.SpanID
+
+	mutex sync.Mutex
 }
 
 type transmitOptions struct {
@@ -92,4 +95,11 @@ func (p *dtSpanMetadata) evaluateSendState(sendTime int64, isFinished bool) prep
 
 	p.sendState = sendStateSkip
 	return prepareResultSkip
+}
+
+func (p *dtSpanMetadata) markPropagatedNow() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.lastPropagationTime = time.Now()
 }
