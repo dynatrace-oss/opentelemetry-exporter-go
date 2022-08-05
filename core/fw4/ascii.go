@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel/trace"
+
+	"core/internal/logger"
 )
 
 func parseIntToken(token string) (int32, error) {
@@ -194,6 +196,8 @@ func parseExtensions(result *Fw4Tag, extensionPart string) error {
 	return nil
 }
 
+var log = logger.NewComponentLogger("fw4")
+
 func parseAndSetExtValue(result *Fw4Tag, tlvId tlvId, hexVal string) error {
 	var err error
 
@@ -221,7 +225,7 @@ func parseAndSetExtValue(result *Fw4Tag, tlvId tlvId, hexVal string) error {
 		result.SpanID, err = trace.SpanIDFromHex(hexVal)
 	default:
 		// Unknown extension values are ignored without error
-		// TODO: Log something at a debug/detailed level
+		log.Debugf("Ignoring unknown extension value: %v", tlvId)
 	}
 
 	return err
