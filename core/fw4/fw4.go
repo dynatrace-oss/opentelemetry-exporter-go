@@ -45,7 +45,7 @@ type Fw4Tag struct {
 	CustomBlob    string
 	tagDepth      int32
 	entryAgentID  int32
-	entryTagID    int32 // Problem: -1 is the "zero value" for this. TODO: Check if 0 is also insignificant.
+	entryTagID    int32 // Problem: -1 is the "zero value" for this.
 	payloadBitset int32
 	TraceID       trace.TraceID
 	SpanID        trace.SpanID
