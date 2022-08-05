@@ -27,7 +27,7 @@ const (
 type DtConfiguration struct {
 	ClusterId                int32
 	Tenant                   string
-	TenantId                 int32
+	tenantId                 int32
 	AgentId                  int64
 	BaseUrl                  string
 	AuthToken                string
@@ -45,6 +45,10 @@ const (
 	LoggingDestination_Stdout LoggingDestination = "stdout"
 	LoggingDestination_Stderr LoggingDestination = "stderr"
 )
+
+func (config *DtConfiguration) TenantId() int32 {
+	return config.tenantId
+}
 
 // ConfigurationProvider
 // Usage: create an instance of ConfigurationProvider and call GetConfiguration() to get the configuration.
@@ -95,7 +99,7 @@ func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, err
 		return nil, validationErr
 	}
 
-	config.TenantId = util.CalculateTenantId(config.Tenant)
+	config.tenantId = util.CalculateTenantId(config.Tenant)
 
 	return config, nil
 }

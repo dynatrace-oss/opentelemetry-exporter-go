@@ -28,7 +28,7 @@ func (tr *dtTracer) Start(ctx context.Context, name string, options ...trace.Spa
 			ctx,
 			sdkSpan,
 			tr.config.ClusterId,
-			tr.config.TenantId,
+			tr.config.TenantId(),
 			int64(tr.config.SpanProcessingIntervalMs)),
 	}
 
