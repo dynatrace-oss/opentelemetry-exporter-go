@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -196,7 +197,16 @@ func parseExtensions(result *Fw4Tag, extensionPart string) error {
 	return nil
 }
 
-var log = logger.NewComponentLogger("fw4")
+// NOTE: Do not access directly, use getParsingLogger() for thread safe initialization
+var fw4ParsingLogger *logger.ComponentLogger
+var parsingLoggerInitOnce sync.Once
+
+func getParsingLogger() *logger.ComponentLogger {
+	parsingLoggerInitOnce.Do(func() {
+		fw4ParsingLogger = logger.NewComponentLogger("fw4")
+	})
+	return fw4ParsingLogger
+}
 
 func parseAndSetExtValue(result *Fw4Tag, tlvId tlvId, hexVal string) error {
 	var err error
@@ -225,7 +235,7 @@ func parseAndSetExtValue(result *Fw4Tag, tlvId tlvId, hexVal string) error {
 		result.SpanID, err = trace.SpanIDFromHex(hexVal)
 	default:
 		// Unknown extension values are ignored without error
-		log.Debugf("Ignoring unknown extension value: %v", tlvId)
+		getParsingLogger().Debugf("Ignoring unknown extension value: %v", tlvId)
 	}
 
 	return err
