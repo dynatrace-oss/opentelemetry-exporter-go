@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"strings"
 
 	"core/configuration/internal/util"
 )
@@ -88,6 +89,9 @@ func loadConfiguration(configFileReader configFileReader) (*DtConfiguration, err
 		LoggingDestination:       LoggingDestination(util.GetStringFromEnvWithDefault("DT_LOGGING_DESTINATION", string(fileConfig.Logging.Destination))),
 		LoggingFlags:             util.GetStringFromEnvWithDefault("DT_LOGGING_GO_FLAGS", fileConfig.Logging.Go.Flags),
 	}
+
+	// A potential trailing forward slash in BaseUrl value must be gracefully handled
+	config.BaseUrl = strings.TrimSuffix(config.BaseUrl, "/")
 
 	setDefaultConfigValues(config)
 	if validationErr := validateConfiguration(config); validationErr != nil {
