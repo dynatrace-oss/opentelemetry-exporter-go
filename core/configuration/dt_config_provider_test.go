@@ -123,3 +123,11 @@ func TestConfigurationViaEnvironment_NonEmptyConfigFile(t *testing.T) {
 	assert.Equal(t, config.LoggingDestination, LoggingDestination_Stdout)
 	assert.Equal(t, config.LoggingFlags, "flag1=true,flag2=false")
 }
+
+func TestHandlingBaseUrlWithForwardSlash(t *testing.T) {
+	mockConfigFileReader := createMockConfigFileReaderWithRequiredFields()
+	mockConfigFileReader.fileConfig.Connection.BaseUrl = "http://localhost:8080/"
+	config, _ := loadConfiguration(mockConfigFileReader)
+
+	assert.Equal(t, config.BaseUrl, "http://localhost:8080")
+}

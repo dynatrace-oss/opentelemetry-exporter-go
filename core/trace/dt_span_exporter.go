@@ -141,7 +141,7 @@ func (e *dtSpanExporterImpl) performHttpRequest(req *http.Request, t exportType)
 		}
 	}
 
-	e.updateTimeouts(t)
+	e.setTimeouts(t)
 
 	start := time.Now()
 	resp, err = e.client.Do(req)
@@ -163,8 +163,8 @@ func (e *dtSpanExporterImpl) performHttpRequest(req *http.Request, t exportType)
 	return resp, err
 }
 
-// updateTimeouts updates connection and data timeouts for HTTP client
-func (e *dtSpanExporterImpl) updateTimeouts(t exportType) {
+// setTimeouts updates connection and data timeouts for HTTP client
+func (e *dtSpanExporterImpl) setTimeouts(t exportType) {
 	var conn, data int64
 	if t == exportTypeForceFlush {
 		conn = configuration.DefaultFlushExportConnTimeoutMs

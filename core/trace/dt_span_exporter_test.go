@@ -118,11 +118,11 @@ func TestDtSpanExporterPerformHTTPRequestWithReachedFlushOperationTimeout(t *tes
 func TestDtSpanExporterUpdateHttpClientTimeouts(t *testing.T) {
 	exporter := newDtSpanExporter(testConfig).(*dtSpanExporterImpl)
 
-	exporter.updateTimeouts(exportTypeForceFlush)
+	exporter.setTimeouts(exportTypeForceFlush)
 	require.Equal(t, exporter.dialer.Timeout, time.Millisecond*time.Duration(configuration.DefaultFlushExportConnTimeoutMs))
 	require.Equal(t, exporter.client.Timeout, time.Millisecond*time.Duration(configuration.DefaultFlushExportConnTimeoutMs+configuration.DefaultFlushExportDataTimeoutMs))
 
-	exporter.updateTimeouts(exportTypePeriodic)
+	exporter.setTimeouts(exportTypePeriodic)
 	require.Equal(t, exporter.dialer.Timeout, time.Millisecond*time.Duration(configuration.DefaultRegularExportConnTimeoutMs))
 	require.Equal(t, exporter.client.Timeout, time.Millisecond*time.Duration(configuration.DefaultRegularExportConnTimeoutMs+configuration.DefaultRegularExportDataTimeoutMs))
 }
