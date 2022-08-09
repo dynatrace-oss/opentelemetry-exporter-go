@@ -15,11 +15,14 @@ func createSpanMetadata(
 	tenantId int32,
 	spanProcessingIntervalMs int64,
 ) *dtSpanMetadata {
-	markParentSpanPropagatedNow(parentCtx)
+	if parentMetadata := dtSpanMetadataFromContext(parentCtx); parentMetadata != nil {
+		parentMetadata.markPropagatedNow()
+	}
 
 	metadata := newDtSpanMetadata(spanProcessingIntervalMs)
-	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdAndTagFromParentSpanContext(parentCtx)
-	metadata.tenantParentSpanId = tenantParentSpanId
+	metadata.tenantParentSpanId = tenantParentSpanIdFromContext(parentCtx)
+
+	fw4Tag := fw4TagFromContextOrMetadata(parentCtx)
 
 	// No FW4Tag was found for the parent span, so create one.
 	if fw4Tag == nil {
@@ -35,26 +38,26 @@ func createSpanMetadata(
 	return metadata
 }
 
-func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (trace.SpanID, *fw4.Fw4Tag) {
-	parentSpan := trace.SpanFromContext(ctx)
-	parentSpanContext := parentSpan.SpanContext()
-
+func tenantParentSpanIdFromContext(ctx context.Context) trace.SpanID {
+	parentSpanContext := trace.SpanFromContext(ctx).SpanContext()
 	if parentSpanContext.IsRemote() {
-		// For remote parent spans, the FW4 tag is stored in the context, and no metadata will exist.
 		if fw4Tag := fw4.Fw4TagFromContext(ctx); fw4Tag != nil {
-			return fw4Tag.SpanID, fw4Tag
+			return fw4Tag.SpanID
 		}
-	} else {
-		if parentSpanMetaData := dtSpanMetadataFromSpan(parentSpan); parentSpanMetaData != nil {
-			return parentSpanContext.SpanID(), parentSpanMetaData.fw4Tag
-		}
-		return parentSpanContext.SpanID(), nil
 	}
-	return trace.SpanID{}, nil
+	return parentSpanContext.SpanID()
 }
 
-func markParentSpanPropagatedNow(ctx context.Context) {
-	if parentMetadata := dtSpanMetadataFromContext(ctx); parentMetadata != nil {
-		parentMetadata.markPropagatedNow()
+func fw4TagFromContextOrMetadata(ctx context.Context) *fw4.Fw4Tag {
+	parentSpan := trace.SpanFromContext(ctx)
+	parentSpanContext := parentSpan.SpanContext()
+	if parentSpanContext.IsRemote() {
+		// For remote parent spans, the FW4 tag is stored in the context, and no metadata will exist.
+		return fw4.Fw4TagFromContext(ctx)
+	} else {
+		if parentSpanMetaData := dtSpanMetadataFromSpan(parentSpan); parentSpanMetaData != nil {
+			return parentSpanMetaData.fw4Tag
+		}
 	}
+	return nil
 }
