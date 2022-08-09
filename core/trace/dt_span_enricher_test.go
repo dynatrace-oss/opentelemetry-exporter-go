@@ -10,7 +10,8 @@ import (
 )
 
 func createTracer() trace.Tracer {
-	otel.SetTracerProvider(NewTracerProvider())
+	tp, _ := newDtTracerProviderWithTestExporter()
+	otel.SetTracerProvider(tp)
 	return otel.Tracer("Test tracer")
 }
 
