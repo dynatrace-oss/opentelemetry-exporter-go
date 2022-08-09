@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"core/internal/fw4"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,4 +44,28 @@ func TestCreateSpanMetadata_WithParentSpan(t *testing.T) {
 	assert.Equal(t, childMetadata.fw4Tag, parentMetadata.fw4Tag, "Pointer to FW4Tag of child should be equal to parent")
 	assert.True(t, childMetadata.lastPropagationTime.IsZero())
 	assert.True(t, !parentMetadata.lastPropagationTime.IsZero())
+}
+
+func TestCreateSpanMetadata_WithRemoteParentSpan(t *testing.T) {
+	// Create remote span context
+	spanId, _ := trace.SpanIDFromHex("00f067aa0ba902b7")
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+		SpanID: spanId,
+	})
+	ctx := trace.ContextWithRemoteSpanContext(context.Background(), spanCtx)
+
+	// Add Fw4Tag to remote span context
+	tag := fw4.NewFw4Tag(1, 2, spanCtx)
+	ctx = fw4.ContextWithFw4Tag(ctx, tag)
+
+	tracer := createTracer()
+	_, childSpan := tracer.Start(ctx, "child span with remote span context")
+	childDtSpan := childSpan.(*dtSpan)
+	childMetadata := childDtSpan.metadata
+
+	assert.Equal(t, spanCtx.SpanID(), childMetadata.tenantParentSpanId)
+	assert.Equal(t, childMetadata.fw4Tag.ClusterID, int32(1))
+	assert.Equal(t, childMetadata.fw4Tag.TenantID, int32(2))
+	assert.Equal(t, childMetadata.fw4Tag, tag, "Pointer to FW4Tag of child should be equal to tag in parent context")
+	assert.True(t, childMetadata.lastPropagationTime.IsZero())
 }
