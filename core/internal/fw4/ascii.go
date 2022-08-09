@@ -13,6 +13,8 @@ import (
 	"core/internal/logger"
 )
 
+var errNoDtTracestateEntry = errors.New("can not find @dt entry in given tracestate")
+
 func parseIntToken(token string) (int32, error) {
 	result, err := strconv.ParseInt(token, 10, 32)
 	return int32(result), err
@@ -78,12 +80,12 @@ func ParseXDynatrace(header string) (Fw4Tag, error) {
 		return result, fmt.Errorf("invalid value for ServerId: %w", err)
 	}
 
-	result.agentID, err = parseIntToken(tokens[2])
+	result.AgentID, err = parseIntToken(tokens[2])
 	if err != nil {
 		return result, fmt.Errorf("invalid value for agentId: %w", err)
 	}
 
-	result.tagID, err = parseIntToken(tokens[3])
+	result.TagID, err = parseIntToken(tokens[3])
 	if err != nil {
 		return result, fmt.Errorf("invalid value for tagId: %w", err)
 	}
@@ -122,12 +124,12 @@ func ParseTracestateEntryValue(entryValue string) (Fw4Tag, error) {
 		return result, fmt.Errorf("invalid value for ServerId: %w", err)
 	}
 
-	result.agentID, err = parseHexIntToken(tokens[1])
+	result.AgentID, err = parseHexIntToken(tokens[1])
 	if err != nil {
 		return result, fmt.Errorf("invalid value for agentId: %w", err)
 	}
 
-	result.tagID, err = parseHexIntToken(tokens[2])
+	result.TagID, err = parseHexIntToken(tokens[2])
 	if err != nil {
 		return result, fmt.Errorf("invalid value for tagId: %w", err)
 	}
@@ -249,8 +251,8 @@ func (fw4 Fw4Tag) ToXDynatrace() string {
 		"FW4;%d;%d;%d;%d;%d;%d;%d",
 		fw4.ClusterID,
 		fw4.ServerID,
-		fw4.agentID,
-		fw4.tagID,
+		fw4.AgentID,
+		fw4.TagID,
 		int32(fw4.encodedLinkID),
 		fw4.TenantID,
 		int32(fw4.PathInfo))
@@ -271,9 +273,9 @@ func (fw4 Fw4Tag) ToTracestateEntryValue() string {
 		&sb,
 		"fw4;%x;%x;%x;%x;%c;%x;%x",
 		uint32(fw4.ServerID),
-		uint32(fw4.agentID),
-		uint32(fw4.tagID),
-		uint32(fw4.linkID()),
+		uint32(fw4.AgentID),
+		uint32(fw4.TagID),
+		uint32(fw4.LinkID()),
 		ignoredStr,
 		uint32(fw4.samplingExponent()),
 		fw4.PathInfo)
@@ -348,7 +350,11 @@ func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 }
 
 func (fw4 Fw4Tag) TraceStateKey() string {
-	return fmt.Sprintf("%x-%x@dt", uint32(fw4.TenantID), uint32(fw4.ClusterID))
+	return TraceStateKey(fw4.TenantID, fw4.ClusterID)
+}
+
+func TraceStateKey(tenantId, clusterId int32) string {
+	return fmt.Sprintf("%x-%x@dt", uint32(tenantId), uint32(clusterId))
 }
 
 func GetMatchingFw4FromXDynatrace(xDt string, tenantId, clusterId int32) (Fw4Tag, error) {
@@ -380,7 +386,7 @@ func GetMatchingFw4FromTracestate(ts trace.TraceState, tenantId, clusterId int32
 	tsKey := TraceStateKey(tenantId, clusterId)
 	tsEntry := ts.Get(tsKey)
 	if len(tsEntry) == 0 {
-		return EmptyTag(), errors.New("can not find @dt entry in given tracestate with key " + tsKey)
+		return EmptyTag(), errNoDtTracestateEntry
 	}
 
 	tag, err := ParseTracestateEntryValue(tsEntry)

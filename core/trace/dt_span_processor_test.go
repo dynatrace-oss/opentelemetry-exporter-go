@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("DT_CONNECTION_BASE_URL", "https://example.com")
 	os.Setenv("DT_CONNECTION_AUTH_TOKEN", "testAuthToken")
 	os.Setenv("DT_LOGGING_DESTINATION", "stdout")
-	os.Setenv("DT_LOGGING_GO_FLAGS", "SpanExporter=true,SpanProcessor=true,TracerProvider=true")
+	os.Setenv("DT_LOGGING_GO_FLAGS", "SpanExporter=true,SpanProcessor=true,TracerProvider=true,TextMapPropagator=true")
 
 	var err error
 	testConfig, err = configuration.GlobalConfigurationProvider.GetConfiguration()

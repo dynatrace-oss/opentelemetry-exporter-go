@@ -42,7 +42,7 @@ func TestCreateSpanMetadata_WithParentSpan(t *testing.T) {
 	assert.Equal(t, parentSpan.SpanContext().SpanID(), childMetadata.tenantParentSpanId)
 	assert.Equal(t, childMetadata.fw4Tag.ClusterID, tracer.(*dtTracer).config.ClusterId)
 	assert.Equal(t, childMetadata.fw4Tag.TenantID, tracer.(*dtTracer).config.TenantId())
-	assert.Equal(t, childMetadata.fw4Tag, parentMetadata.fw4Tag, "Pointer to FW4Tag of child should be equal to parent")
+	assert.Same(t, childMetadata.fw4Tag, parentMetadata.fw4Tag, "Pointer to FW4Tag of child should be equal to parent")
 	assert.True(t, childMetadata.lastPropagationTime.IsZero())
 	assert.False(t, parentMetadata.lastPropagationTime.IsZero())
 }
@@ -67,6 +67,6 @@ func TestCreateSpanMetadata_WithRemoteParentSpan(t *testing.T) {
 	assert.Equal(t, spanCtx.SpanID(), childMetadata.tenantParentSpanId)
 	assert.Equal(t, childMetadata.fw4Tag.ClusterID, int32(1))
 	assert.Equal(t, childMetadata.fw4Tag.TenantID, int32(2))
-	assert.Equal(t, childMetadata.fw4Tag, tag, "Pointer to FW4Tag of child should be equal to tag in parent context")
+	assert.Same(t, childMetadata.fw4Tag, tag, "Pointer to FW4Tag of child should be equal to tag in parent context")
 	assert.True(t, childMetadata.lastPropagationTime.IsZero())
 }

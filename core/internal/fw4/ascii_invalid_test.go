@@ -98,7 +98,7 @@ func TestGetFw4TagFromTracestateWithMismatchingTenantId(t *testing.T) {
 	require.NoError(t, err)
 
 	tag, err := GetMatchingFw4FromTracestate(ts, 0, 129)
-	require.EqualError(t, err, "can not find @dt entry in given tracestate with key 0-81@dt")
+	require.Equal(t, err, errNoDtTracestateEntry)
 	require.Equal(t, tag, EmptyTag())
 }
 
@@ -108,6 +108,6 @@ func TestGetFw4TagFromTracestateWithMismatchingClustertId(t *testing.T) {
 	require.NoError(t, err)
 
 	tag, err := GetMatchingFw4FromTracestate(ts, 17, 0)
-	require.EqualError(t, err, "can not find @dt entry in given tracestate with key 11-0@dt")
+	require.Equal(t, err, errNoDtTracestateEntry)
 	require.Equal(t, tag, EmptyTag())
 }
