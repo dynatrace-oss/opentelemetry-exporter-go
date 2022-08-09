@@ -9,16 +9,16 @@ import (
 )
 
 func createSpanMetadata(
-	ctx context.Context,
+	parentCtx context.Context,
 	span trace.Span,
 	clusterId,
 	tenantId int32,
 	spanProcessingIntervalMs int64,
 ) *dtSpanMetadata {
-	markParentSpanPropagatedNow(ctx)
+	markParentSpanPropagatedNow(parentCtx)
 
 	metadata := newDtSpanMetadata(spanProcessingIntervalMs)
-	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdAndTagFromParentSpanContext(ctx)
+	tenantParentSpanId, fw4Tag := extractTenantParentSpanIdAndTagFromParentSpanContext(parentCtx)
 	metadata.tenantParentSpanId = tenantParentSpanId
 
 	// No FW4Tag was found for the parent span, so create one.
@@ -27,7 +27,7 @@ func createSpanMetadata(
 	}
 
 	if fw4Tag.ServerID == 0 {
-		serverId := getServerIdFromContext(ctx)
+		serverId := getServerIdFromContext(parentCtx)
 		fw4Tag.ServerID = serverId
 	}
 
