@@ -45,7 +45,7 @@ func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (
 			return fw4Tag.SpanID, fw4Tag
 		}
 	} else {
-		if parentSpanMetaData := getParentSpanMetadata(parentSpan); parentSpanMetaData != nil {
+		if parentSpanMetaData := dtSpanMetadataFromSpan(parentSpan); parentSpanMetaData != nil {
 			return parentSpanContext.SpanID(), parentSpanMetaData.fw4Tag
 		}
 		return parentSpanContext.SpanID(), nil
@@ -53,20 +53,8 @@ func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (
 	return trace.SpanID{}, nil
 }
 
-func getParentSpanMetadata(parentSpan trace.Span) *dtSpanMetadata {
-	if parentDtSpan, ok := parentSpan.(*dtSpan); ok {
-		return parentDtSpan.metadata
-	}
-	return nil
-}
-
-func getParentSpanMetadataFromContext(ctx context.Context) *dtSpanMetadata {
-	parentSpan := trace.SpanFromContext(ctx)
-	return getParentSpanMetadata(parentSpan)
-}
-
 func markParentSpanPropagatedNow(ctx context.Context) {
-	if parentMetadata := getParentSpanMetadataFromContext(ctx); parentMetadata != nil {
+	if parentMetadata := dtSpanMetadataFromContext(ctx); parentMetadata != nil {
 		parentMetadata.markPropagatedNow()
 	}
 }

@@ -1,6 +1,7 @@
 package trace
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -102,4 +103,16 @@ func (p *dtSpanMetadata) markPropagatedNow() {
 	defer p.mutex.Unlock()
 
 	p.lastPropagationTime = time.Now()
+}
+
+func dtSpanMetadataFromSpan(parentSpan trace.Span) *dtSpanMetadata {
+	if parentDtSpan, ok := parentSpan.(*dtSpan); ok {
+		return parentDtSpan.metadata
+	}
+	return nil
+}
+
+func dtSpanMetadataFromContext(ctx context.Context) *dtSpanMetadata {
+	parentSpan := trace.SpanFromContext(ctx)
+	return dtSpanMetadataFromSpan(parentSpan)
 }
