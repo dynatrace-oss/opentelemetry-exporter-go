@@ -27,8 +27,8 @@ func spanIdOrPanic(hex string) trace.SpanID {
 func setDummyTagValues(fw4 Fw4Tag) Fw4Tag {
 	fw4.ClusterID = 666
 	fw4.ServerID = 1
-	fw4.agentID = -332051242
-	fw4.tagID = 1
+	fw4.AgentID = -332051242
+	fw4.TagID = 1
 	fw4.encodedLinkID = 2
 	fw4.TenantID = 113948091
 	fw4.PathInfo = 12345
@@ -54,8 +54,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       0x20e,
-				tagID:         0,
+				AgentID:       0x20e,
+				TagID:         0,
 				encodedLinkID: 0,
 				TenantID:      17,
 				PathInfo:      77,
@@ -75,8 +75,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       2,
-				tagID:         3,
+				AgentID:       2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      17,
 				PathInfo:      12345,
@@ -150,8 +150,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     666,
 				ServerID:      2147483647,
-				agentID:       -2147483648,
-				tagID:         1,
+				AgentID:       -2147483648,
+				TagID:         1,
 				encodedLinkID: 2,
 				TenantID:      113948091,
 				PathInfo:      123456,
@@ -222,8 +222,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       -2,
-				tagID:         3,
+				AgentID:       -2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      17,
 				PathInfo:      12345,
@@ -240,8 +240,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       526,
-				tagID:         0,
+				AgentID:       526,
+				TagID:         0,
 				encodedLinkID: 0,
 				TenantID:      17,
 				PathInfo:      1111,
@@ -325,8 +325,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      4,
-				agentID:       1,
-				tagID:         2,
+				AgentID:       1,
+				TagID:         2,
 				encodedLinkID: 3,
 				TenantID:      17,
 				PathInfo:      1,
@@ -344,8 +344,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      4,
-				agentID:       1,
-				tagID:         2,
+				AgentID:       1,
+				TagID:         2,
 				encodedLinkID: 3,
 				TenantID:      17,
 				PathInfo:      1,
@@ -364,7 +364,7 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       526,
+				AgentID:       526,
 				encodedLinkID: 2147483648, // 2**31 => -x == x
 				TenantID:      17,
 				PathInfo:      8671,
@@ -385,8 +385,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       2,
-				tagID:         3,
+				AgentID:       2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      -1769303221,
 				PathInfo:      12345,
@@ -403,8 +403,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     -1723916453,
 				ServerID:      1,
-				agentID:       2,
-				tagID:         3,
+				AgentID:       2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      155,
 				PathInfo:      12345,
@@ -421,8 +421,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     -1723916453,
 				ServerID:      1,
-				agentID:       2,
-				tagID:         3,
+				AgentID:       2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      -1769303221,
 				PathInfo:      12345,

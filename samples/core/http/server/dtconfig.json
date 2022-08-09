@@ -21,7 +21,7 @@
     "Logging": {
         "Destination": "stdout",
         "Go": {
-            "Flags": "SpanExporter=true,SpanProcessor=true,TracerProvider=true"
+            "Flags": "SpanExporter=true,SpanProcessor=true,TracerProvider=true,TextMapPropagator=true"
         }
     },
     "Debug": {

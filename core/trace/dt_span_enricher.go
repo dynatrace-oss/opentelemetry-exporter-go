@@ -27,14 +27,10 @@ func createSpanMetadata(
 	// No FW4Tag was found for the parent span, so create one.
 	if fw4Tag == nil {
 		fw4Tag = fw4.NewFw4Tag(clusterId, tenantId, span.SpanContext())
+		fw4Tag.ServerID = getServerIdFromContext(parentCtx)
 	}
 
-	if fw4Tag.ServerID == 0 {
-		serverId := getServerIdFromContext(parentCtx)
-		fw4Tag.ServerID = serverId
-	}
-
-	metadata.fw4Tag = fw4Tag
+	metadata.setFw4Tag(fw4Tag)
 	return metadata
 }
 
@@ -57,7 +53,7 @@ func fw4TagFromContextOrMetadata(ctx context.Context) *fw4.Fw4Tag {
 		// For remote parent spans, the FW4 tag is stored in the context, and no metadata will exist.
 		return fw4.Fw4TagFromContext(ctx)
 	} else if parentSpanMetaData := dtSpanMetadataFromSpan(parentSpan); parentSpanMetaData != nil {
-		return parentSpanMetaData.fw4Tag
+		return parentSpanMetaData.getFw4Tag()
 	}
 	return nil
 }

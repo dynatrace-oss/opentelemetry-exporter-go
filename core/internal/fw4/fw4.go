@@ -37,8 +37,8 @@ const (
 )
 
 type Fw4Tag struct {
-	agentID       int32
-	tagID         int32
+	AgentID       int32
+	TagID         int32
 	encodedLinkID uint32
 	ServerID      int32
 	ClusterID     int32
@@ -71,7 +71,7 @@ func (fw4 Fw4Tag) HasTagDepth() bool {
 	return fw4.tagDepth > 0
 }
 
-func (fw4 Fw4Tag) linkID() int32 {
+func (fw4 Fw4Tag) LinkID() int32 {
 	return int32(fw4.encodedLinkID & linkIdMask)
 }
 
@@ -89,8 +89,8 @@ func (fw4 Fw4Tag) String() string {
 	fmt.Fprintf(
 		&sb,
 		"FW4{a=%v;t=%v;L=%v;s=%v;c=%v;t=%v;p=%v",
-		fw4.agentID,
-		fw4.tagID,
+		fw4.AgentID,
+		fw4.TagID,
 		fw4.encodedLinkID,
 		fw4.ServerID,
 		fw4.ClusterID,
@@ -175,4 +175,58 @@ func Fw4TagFromContext(ctx context.Context) *Fw4Tag {
 		return fw4Tag
 	}
 	return nil
+}
+
+func (fw4 Fw4Tag) SpanContext() trace.SpanContext {
+	var traceFlag trace.TraceFlags
+	if !fw4.IsIgnored() {
+		traceFlag = trace.FlagsSampled
+	}
+
+	config := trace.SpanContextConfig{
+		TraceID:    fw4.TraceID,
+		SpanID:     fw4.SpanID,
+		TraceFlags: traceFlag,
+	}
+
+	config.TraceState, _ = config.TraceState.Insert(fw4.TraceStateKey(), fw4.ToTracestateEntryValueWithoutTraceId())
+	return trace.NewSpanContext(config)
+}
+
+func (fw4 Fw4Tag) Propagate(ctx trace.SpanContext) *Fw4Tag {
+	tag := NewFw4Tag(fw4.ClusterID, fw4.TenantID, ctx)
+
+	tag.encodedLinkID = fw4.encodedLinkID
+	// link id must not be propagated
+	tag.encodedLinkID &= ^linkIdMask
+
+	// ignored flag must be based on a given span context
+	if ctx.IsSampled() {
+		tag.encodedLinkID &= ^linkIdIgnoredMask
+	} else {
+		tag.encodedLinkID |= linkIdIgnoredMask
+	}
+
+	tag.tagDepth = fw4.tagDepth + 1
+	tag.ServerID = fw4.ServerID
+	tag.PathInfo = fw4.PathInfo
+	tag.CustomBlob = fw4.CustomBlob
+	tag.entryAgentID = fw4.entryAgentID
+	tag.entryTagID = fw4.entryTagID
+
+	return tag
+}
+
+func UpdateTracestate(ctx trace.SpanContext, tag Fw4Tag) trace.SpanContext {
+	ts, _ := ctx.TraceState().Insert(tag.TraceStateKey(), tag.ToTracestateEntryValueWithoutTraceId())
+	return ctx.WithTraceState(ts)
+}
+
+func UpdateTraceFlags(ctx trace.SpanContext, tag Fw4Tag) trace.SpanContext {
+	var flag trace.TraceFlags
+	if !tag.IsIgnored() {
+		flag = trace.FlagsSampled
+	}
+
+	return ctx.WithTraceFlags(flag)
 }

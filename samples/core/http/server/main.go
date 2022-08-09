@@ -10,7 +10,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/zipkin"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
@@ -43,7 +42,7 @@ func main() {
 	// Setup Dynatrace TracerProvider as a global TracerProvider
 	tp := dtTrace.NewTracerProvider(opts...)
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	otel.SetTextMapPropagator(dtTrace.NewTextMapPropagator())
 
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
