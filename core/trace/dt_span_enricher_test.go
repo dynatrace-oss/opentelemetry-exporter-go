@@ -2,8 +2,6 @@ package trace
 
 import (
 	"context"
-	// "core/configuration"
-	"core/fw4"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,21 +12,6 @@ import (
 func createTracer() trace.Tracer {
 	otel.SetTracerProvider(NewTracerProvider())
 	return otel.Tracer("Test tracer")
-}
-
-func TestGetFw4TagFromContext_IsNil(t *testing.T) {
-	ctx :=  context.Background()
-	tag := getFw4TagFromContext(ctx)
-	assert.Nil(t, tag)
-}
-
-func TestGetFw4TagFromContext_IsNotNil(t *testing.T) {
-	tag := fw4.EmptyTag()
-	ctx := context.WithValue(context.Background(), fw4TagKey, &tag)
-
-	tagFromContext := getFw4TagFromContext(ctx)
-	assert.NotNil(t, tagFromContext)
-	assert.Equal(t, &tag, tagFromContext)
 }
 
 func TestCreateFw4Tag(t *testing.T) {

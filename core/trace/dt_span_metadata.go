@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"core/configuration"
-	"core/fw4"
+	"core/internal/fw4"
 
 	"go.opentelemetry.io/otel/trace"
 )

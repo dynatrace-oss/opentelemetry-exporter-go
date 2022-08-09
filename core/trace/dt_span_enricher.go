@@ -8,7 +8,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"core/fw4"
+	"core/internal/fw4"
 )
 
 type fw4TagKeyType int
@@ -48,7 +48,7 @@ func extractTenantParentSpanIdAndTagFromParentSpanContext(ctx context.Context) (
 
 	if parentSpanContext.IsRemote() {
 		// For remote parent spans, the FW4 tag is stored in the context, and no metadata will exist.
-		if fw4Tag := getFw4TagFromContext(ctx); fw4Tag != nil {
+		if fw4Tag := fw4.Fw4TagFromContext(ctx); fw4Tag != nil {
 			return fw4Tag.SpanID, fw4Tag
 		}
 	} else {
@@ -76,13 +76,6 @@ func markParentSpanPropagatedNow(ctx context.Context) {
 	if parentMetadata := getParentSpanMetadataFromContext(ctx); parentMetadata != nil {
 		parentMetadata.markPropagatedNow()
 	}
-}
-
-func getFw4TagFromContext(ctx context.Context) *fw4.Fw4Tag {
-	if fw4Tag, ok := ctx.Value(fw4TagKey).(*fw4.Fw4Tag); ok {
-		return fw4Tag
-	}
-	return nil
 }
 
 type pathInfoGenerator struct {

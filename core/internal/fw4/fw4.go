@@ -1,6 +1,7 @@
 package fw4
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -123,4 +124,21 @@ func (fw4 Fw4Tag) String() string {
 	}
 	sb.WriteByte('}')
 	return sb.String()
+}
+
+// Context-related FW4Tag utilities
+
+type fw4TagKeyType int
+
+const fw4TagKey fw4TagKeyType = iota
+
+func ContextWithFw4Tag(ctx context.Context, fw4Tag *Fw4Tag) context.Context {
+	return context.WithValue(ctx, fw4TagKey, fw4Tag)
+}
+
+func Fw4TagFromContext(ctx context.Context) *Fw4Tag {
+	if fw4Tag, ok := ctx.Value(fw4TagKey).(*Fw4Tag); ok {
+		return fw4Tag
+	}
+	return nil
 }
