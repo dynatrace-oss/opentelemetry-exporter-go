@@ -50,14 +50,11 @@ func tenantParentSpanIdFromContext(ctx context.Context) trace.SpanID {
 
 func fw4TagFromContextOrMetadata(ctx context.Context) *fw4.Fw4Tag {
 	parentSpan := trace.SpanFromContext(ctx)
-	parentSpanContext := parentSpan.SpanContext()
-	if parentSpanContext.IsRemote() {
+	if parentSpan.SpanContext().IsRemote() {
 		// For remote parent spans, the FW4 tag is stored in the context, and no metadata will exist.
 		return fw4.Fw4TagFromContext(ctx)
-	} else {
-		if parentSpanMetaData := dtSpanMetadataFromSpan(parentSpan); parentSpanMetaData != nil {
-			return parentSpanMetaData.fw4Tag
-		}
+	} else if parentSpanMetaData := dtSpanMetadataFromSpan(parentSpan); parentSpanMetaData != nil {
+		return parentSpanMetaData.fw4Tag
 	}
 	return nil
 }

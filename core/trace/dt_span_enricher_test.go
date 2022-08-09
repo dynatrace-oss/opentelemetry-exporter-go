@@ -2,12 +2,13 @@ package trace
 
 import (
 	"context"
-	"core/internal/fw4"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	trace "go.opentelemetry.io/otel/trace"
+
+	"core/internal/fw4"
 )
 
 func createTracer() trace.Tracer {
@@ -43,7 +44,7 @@ func TestCreateSpanMetadata_WithParentSpan(t *testing.T) {
 	assert.Equal(t, childMetadata.fw4Tag.TenantID, tracer.(*dtTracer).config.TenantId())
 	assert.Equal(t, childMetadata.fw4Tag, parentMetadata.fw4Tag, "Pointer to FW4Tag of child should be equal to parent")
 	assert.True(t, childMetadata.lastPropagationTime.IsZero())
-	assert.True(t, !parentMetadata.lastPropagationTime.IsZero())
+	assert.False(t, parentMetadata.lastPropagationTime.IsZero())
 }
 
 func TestCreateSpanMetadata_WithRemoteParentSpan(t *testing.T) {
