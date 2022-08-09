@@ -11,10 +11,6 @@ import (
 	"core/internal/fw4"
 )
 
-type fw4TagKeyType int
-
-const fw4TagKey fw4TagKeyType = iota
-
 func createSpanMetadata(
 	ctx context.Context,
 	span trace.Span,
