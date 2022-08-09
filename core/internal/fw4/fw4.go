@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"strings"
+	"sync"
+	"time"
 
 	"go.opentelemetry.io/otel/trace"
 )
@@ -124,6 +127,37 @@ func (fw4 Fw4Tag) String() string {
 	}
 	sb.WriteByte('}')
 	return sb.String()
+}
+
+// FW4Tag instantiation
+
+// Used to generate FwTag.PathInfo in a thread-safe way.
+type pathInfoGenerator struct {
+	randomNumberGenerator *rand.Rand
+	mutex                 sync.Mutex
+}
+
+func (p *pathInfoGenerator) generatePathInfo() uint32 {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	// PathInfo must be an unsigned 32 bit integer
+	// whose lowest 8 bits are a pseudo-random number in the range [0, 255]
+	return uint32(p.randomNumberGenerator.Intn(256))
+}
+
+var pathInfoGeneratorInstance = pathInfoGenerator{
+	randomNumberGenerator: rand.New(rand.NewSource(time.Now().UnixNano())),
+	mutex:                 sync.Mutex{},
+}
+
+func NewFw4Tag(clusterId, tenantId int32, spanContext trace.SpanContext) *Fw4Tag {
+	tag := EmptyTag()
+	tag.ClusterID = clusterId
+	tag.TenantID = tenantId
+	tag.PathInfo = pathInfoGeneratorInstance.generatePathInfo()
+	tag.TraceID = spanContext.TraceID()
+	tag.SpanID = spanContext.SpanID()
+	return &tag
 }
 
 // Context-related FW4Tag utilities

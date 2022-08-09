@@ -2,9 +2,6 @@ package trace
 
 import (
 	"context"
-	"math/rand"
-	"sync"
-	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -26,7 +23,7 @@ func createSpanMetadata(
 
 	// No FW4Tag was found for the parent span, so create one.
 	if fw4Tag == nil {
-		fw4Tag = createFw4Tag(clusterId, tenantId, span.SpanContext())
+		fw4Tag = fw4.NewFw4Tag(clusterId, tenantId, span.SpanContext())
 	}
 
 	if fw4Tag.ServerID == 0 {
@@ -72,32 +69,4 @@ func markParentSpanPropagatedNow(ctx context.Context) {
 	if parentMetadata := getParentSpanMetadataFromContext(ctx); parentMetadata != nil {
 		parentMetadata.markPropagatedNow()
 	}
-}
-
-type pathInfoGenerator struct {
-	randomNumberGenerator *rand.Rand
-	mutex                 sync.Mutex
-}
-
-func (p *pathInfoGenerator) generatePathInfo() uint32 {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	// PathInfo must be an unsigned 32 bit integer
-	// whose lowest 8 bits are a pseudo-random number in the range [0, 255]
-	return uint32(p.randomNumberGenerator.Intn(256))
-}
-
-var pathInfoGeneratorInstance = pathInfoGenerator{
-	randomNumberGenerator: rand.New(rand.NewSource(time.Now().UnixNano())),
-	mutex:                 sync.Mutex{},
-}
-
-func createFw4Tag(clusterId, tenantId int32, spanContext trace.SpanContext) *fw4.Fw4Tag {
-	tag := fw4.EmptyTag()
-	tag.ClusterID = clusterId
-	tag.TenantID = tenantId
-	tag.PathInfo = pathInfoGeneratorInstance.generatePathInfo()
-	tag.TraceID = spanContext.TraceID()
-	tag.SpanID = spanContext.SpanID()
-	return &tag
 }
