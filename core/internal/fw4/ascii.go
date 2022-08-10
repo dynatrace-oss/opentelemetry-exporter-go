@@ -282,6 +282,11 @@ func (fw4 Fw4Tag) ToTracestateEntryValue() string {
 	return sb.String()
 }
 
+func (fw4 Fw4Tag) ToTracestateEntryValueWithoutTraceId() string {
+	fw4.TraceID = trace.TraceID{}
+	return fw4.ToTracestateEntryValue()
+}
+
 //nolint:errcheck
 func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 	hasExt := false
@@ -344,4 +349,48 @@ func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 
 func (fw4 Fw4Tag) TraceStateKey() string {
 	return fmt.Sprintf("%x-%x@dt", uint32(fw4.TenantID), uint32(fw4.ClusterID))
+}
+
+func GetMatchingFw4FromXDynatrace(xDt string, tenantId, clusterId int32) (Fw4Tag, error) {
+	tag, err := ParseXDynatrace(xDt)
+	if err != nil {
+		return tag, err
+	}
+
+	if !tag.TraceID.IsValid() {
+		return EmptyTag(), errors.New("FW4 tag does not contain TraceId")
+	}
+
+	if !tag.SpanID.IsValid() {
+		return EmptyTag(), errors.New("FW4 tag does not contain SpanId")
+	}
+
+	if tag.ClusterID != clusterId {
+		return EmptyTag(), errors.New("FW4 ClusterId mismatch")
+	}
+
+	if tag.TenantID != tenantId {
+		return EmptyTag(), errors.New("FW4 TenantId mismatch")
+	}
+
+	return tag, nil
+}
+
+func GetMatchingFw4FromTracestate(ts trace.TraceState, tenantId, clusterId int32) (Fw4Tag, error) {
+	tsKey := TraceStateKey(tenantId, clusterId)
+	tsEntry := ts.Get(tsKey)
+	if len(tsEntry) == 0 {
+		return EmptyTag(), errors.New("can not find @dt entry in given tracestate with key " + tsKey)
+	}
+
+	tag, err := ParseTracestateEntryValue(tsEntry)
+	if err != nil {
+		return EmptyTag(), err
+	}
+
+	// parsed tracestate entry itself does not contain tenant and cluster ids, so update them accordingly
+	tag.TenantID = tenantId
+	tag.ClusterID = clusterId
+
+	return tag, nil
 }

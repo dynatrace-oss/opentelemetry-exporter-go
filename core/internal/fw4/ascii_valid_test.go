@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -499,4 +500,47 @@ func TestParseHexInt(t *testing.T) {
 	if result != -332051242 {
 		t.Fatalf("Unexpected result %v", result)
 	}
+}
+
+func TestFW4TagWithTraceIdToTracestateEntryValue(t *testing.T) {
+	fw4, err := ParseXDynatrace("FW4;129;1;526;0;0;17;12345;ce1f;2h01;6h11223344556677889900112233445566;7h663055fc5bca216f")
+	require.NoError(t, err)
+
+	require.Equal(t, fw4.ToTracestateEntryValueWithoutTraceId(), "fw4;1;20e;0;0;0;0;3039;28aa;2h01;7h663055fc5bca216f")
+	require.Equal(t, fw4.ToTracestateEntryValue(), "fw4;1;20e;0;0;0;0;3039;ce1f;2h01;6h11223344556677889900112233445566;7h663055fc5bca216f")
+}
+
+func TestFW4TagWithoutTraceIdToTracestateEntryValue(t *testing.T) {
+	fw4, err := ParseXDynatrace("FW4;129;1;526;0;0;17;12345;28aa;2h01;7h663055fc5bca216f")
+	require.NoError(t, err)
+
+	require.Equal(t, fw4.ToTracestateEntryValueWithoutTraceId(), "fw4;1;20e;0;0;0;0;3039;28aa;2h01;7h663055fc5bca216f")
+	// FW4 tag does not contain traceId, thus there must not be traceId in tracestate at all
+	require.Equal(t, fw4.ToTracestateEntryValue(), "fw4;1;20e;0;0;0;0;3039;28aa;2h01;7h663055fc5bca216f")
+}
+
+func TestGetMatchingFw4FromXDynatrace(t *testing.T) {
+	var tenantId, clusterId int32 = 17, 129
+	tag, err := GetMatchingFw4FromXDynatrace("FW4;129;1;526;0;0;17;12345;ce1f;2h01;6h11223344556677889900112233445566;7h663055fc5bca216f", tenantId, clusterId)
+	require.NoError(t, err)
+
+	require.EqualValues(t, tag.TenantID, tenantId)
+	require.EqualValues(t, tag.ClusterID, clusterId)
+	require.Equal(t, tag.TraceID.String(), "11223344556677889900112233445566")
+	require.Equal(t, tag.SpanID.String(), "663055fc5bca216f")
+}
+
+func TestGetMatchingFw4FromTracestate(t *testing.T) {
+	var tenantId, clusterId int32 = 17, 129
+	ts := trace.TraceState{}
+	ts, err := ts.Insert("11-81@dt", "fw4;1;ec354cd6;1;2;0;0;3039;fa64;1h48656c6c6f2c20576f726c6421;2h0123;7h8877665544332211")
+	require.NoError(t, err)
+
+	tag, err := GetMatchingFw4FromTracestate(ts, tenantId, clusterId)
+	require.NoError(t, err)
+
+	require.EqualValues(t, tag.TenantID, tenantId)
+	require.EqualValues(t, tag.ClusterID, clusterId)
+	require.False(t, tag.TraceID.IsValid())
+	require.Equal(t, tag.SpanID.String(), "8877665544332211")
 }
