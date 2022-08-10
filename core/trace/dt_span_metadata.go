@@ -1,9 +1,14 @@
 package trace
 
 import (
+	"context"
+	"sync"
 	"time"
 
 	"core/configuration"
+	"core/internal/fw4"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type sendState int
@@ -31,6 +36,12 @@ type dtSpanMetadata struct {
 	lastSentMs  int64
 	seqNumber   int32
 	options     *transmitOptions
+
+	fw4Tag              *fw4.Fw4Tag
+	lastPropagationTime time.Time
+	tenantParentSpanId  trace.SpanID
+
+	mutex sync.Mutex
 }
 
 type transmitOptions struct {
@@ -85,4 +96,23 @@ func (p *dtSpanMetadata) evaluateSendState(sendTime int64, isFinished bool) prep
 
 	p.sendState = sendStateSkip
 	return prepareResultSkip
+}
+
+func (p *dtSpanMetadata) markPropagatedNow() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.lastPropagationTime = time.Now()
+}
+
+func dtSpanMetadataFromSpan(parentSpan trace.Span) *dtSpanMetadata {
+	if parentDtSpan, ok := parentSpan.(*dtSpan); ok {
+		return parentDtSpan.metadata
+	}
+	return nil
+}
+
+func dtSpanMetadataFromContext(ctx context.Context) *dtSpanMetadata {
+	parentSpan := trace.SpanFromContext(ctx)
+	return dtSpanMetadataFromSpan(parentSpan)
 }

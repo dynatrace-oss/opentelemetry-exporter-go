@@ -58,5 +58,5 @@ func main() {
 
 	fmt.Println("Starting HTTP server on port 8080")
 	srv := &http.Server{Handler: mux}
-	srv.Serve(listener)
+	srv.Serve(listener) //nolint:errcheck
 }
