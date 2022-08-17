@@ -44,8 +44,11 @@ func tenantParentSpanIdFromContext(ctx context.Context) trace.SpanID {
 		if fw4Tag := fw4.Fw4TagFromContext(ctx); fw4Tag != nil {
 			return fw4Tag.SpanID
 		}
+	} else {
+		return parentSpanContext.SpanID()
 	}
-	return parentSpanContext.SpanID()
+
+	return trace.SpanID{}
 }
 
 func fw4TagFromContextOrMetadata(ctx context.Context) *fw4.Fw4Tag {
