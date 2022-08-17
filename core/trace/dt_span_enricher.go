@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"core/internal/fw4"
+	"core/trace/internal/util"
 )
 
 func createSpanMetadata(
@@ -27,7 +28,7 @@ func createSpanMetadata(
 	// No FW4Tag was found for the parent span, so create one.
 	if fw4Tag == nil {
 		fw4Tag = fw4.NewFw4Tag(clusterId, tenantId, span.SpanContext())
-		fw4Tag.ServerID = getServerIdFromContext(parentCtx)
+		fw4Tag.ServerID = util.GetServerIdFromContext(parentCtx)
 	}
 
 	metadata.setFw4Tag(fw4Tag)
