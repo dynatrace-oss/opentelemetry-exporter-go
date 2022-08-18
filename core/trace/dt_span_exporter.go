@@ -74,9 +74,13 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	e.logger.Debugf("Serialize %d spans to export", len(spans))
 
 	start := time.Now()
-	// TODO: Serialize spans that have to be exported.
-	// As an optimization, stop spans serialization if cMaxSizeSend size is reached
-	serializedSpans := []byte{}
+	// TODO: As an optimization, implement a splitting algorithm so that we can send spans in batches
+	// whose sizes do not exceed cMaxSizeSend
+	serializedSpans, err := serializeSpans(spans, e.config.Tenant, e.config.AgentId)
+	if err != nil {
+		return err
+	}
+
 	e.logger.Debugf("Serialization process took %s", time.Since(start))
 
 	serializedSpansLen := len(serializedSpans)
