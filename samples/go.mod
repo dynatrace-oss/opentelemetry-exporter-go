@@ -12,3 +12,5 @@ require (
 )
 
 replace core => ./../core
+
+replace dynatrace.com => ./../core/internal/proto/dynatrace.com
