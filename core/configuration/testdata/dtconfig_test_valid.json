@@ -4,8 +4,7 @@
     "Tenant": "schnitzel",
     "Connection": {
         "AuthToken": "dt0a01.schnitzel.xsdffdedr",
-        "BaseUrl": "https://ag.xyz.com",
-        "Proxy": "https://user:pass@foo.bar.com:8081"
+        "BaseUrl": "https://ag.xyz.com"
     },
     "RUM": {
         "ClientIpHeaders": [
