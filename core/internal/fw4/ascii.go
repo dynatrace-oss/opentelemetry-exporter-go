@@ -343,5 +343,5 @@ func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 }
 
 func (fw4 Fw4Tag) TraceStateKey() string {
-	return fmt.Sprintf("%x-%x@dt", fw4.TenantID, fw4.ClusterID)
+	return fmt.Sprintf("%x-%x@dt", uint32(fw4.TenantID), uint32(fw4.ClusterID))
 }
