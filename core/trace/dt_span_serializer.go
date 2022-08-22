@@ -31,12 +31,10 @@ func serializeSpans(
 
 	for span := range spans {
 		fw4Tag := span.metadata.fw4Tag
-		customTag, err := getProtoCustomTag(fw4Tag.CustomBlob)
-		if err != nil {
-			return nil, err
-		}
+		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
 
 		var spanMsg *protoTrace.Span
+		var err error
 		spanMsg, resource, err = createProtoSpan(span, customTag)
 		if err != nil {
 			return nil, err
@@ -74,10 +72,18 @@ func serializeSpans(
 }
 
 func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*protoTrace.Span, *resource.Resource, error) {
-	spanMetadata := dtSpan.metadata
+	if dtSpan == nil {
+		return nil, nil, errors.New("cannot create proto span from nil dtSpan")
+	}
+
 	span, ok := dtSpan.Span.(sdktrace.ReadOnlySpan)
 	if !ok {
 		return nil, nil, errors.New("failed to cast span to ReadOnlySpan")
+	}
+
+	spanMetadata := dtSpan.metadata
+	if spanMetadata == nil {
+		return nil, nil, errors.New("cannot create proto span when dtSpan metadata is nil")
 	}
 
 	spanContext := span.SpanContext()
@@ -96,8 +102,16 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 
 	if sendReason := spanMetadata.sendState; sendReason == sendStateSpanEnded || sendReason == sendStateInitialSend {
 		spanMsg.TenantParentSpanId = spanMetadata.tenantParentSpanId[:]
-		parentSpanId := span.Parent().SpanID()
-		spanMsg.ParentSpanId = parentSpanId[:]
+		
+		if parentSpanCtx := span.Parent(); parentSpanCtx.IsValid() {
+			// This is not a root span and has a parent
+			parentSpanId := parentSpanCtx.SpanID()
+			spanMsg.ParentSpanId = parentSpanId[:]
+		} else {
+			// This is a root span
+			spanMsg.CustomTag = incomingCustomTag
+		}
+
 		spanMsg.Name = span.Name()
 		spanMsg.Kind = getProtoSpanKind(span.SpanKind())
 		spanMsg.StartTimeUnixnano = uint64(span.StartTime().UnixNano())
@@ -113,7 +127,7 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 			return nil, nil, err
 		}
 		spanMsg.Attributes = append(spanMsg.Attributes, protoAttributes...)
-		
+
 		protoEvents, err := getProtoEvents(span.Events())
 		if err != nil {
 			return nil, nil, err
@@ -131,10 +145,6 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 			return nil, nil, err
 		}
 		spanMsg.Status = status
-		
-		if isRootSpan := !parentSpanId.IsValid(); isRootSpan {
-			spanMsg.CustomTag = incomingCustomTag
-		}
 	}
 	return spanMsg, span.Resource(), nil
 }
@@ -307,9 +317,10 @@ func getProtoLinks(links []sdktrace.Link) ([]*protoTrace.Span_Link, error) {
 			return nil, err
 		}
 		protoLink := &protoTrace.Span_Link{
-			TraceId:    traceId[:],
-			SpanId:     spanId[:],
-			Attributes: protoAttributes,
+			TraceId:                traceId[:],
+			SpanId:                 spanId[:],
+			Attributes:             protoAttributes,
+			DroppedAttributesCount: uint32(link.DroppedAttributeCount),
 		}
 		protoLinks = append(protoLinks, protoLink)
 	}
@@ -338,7 +349,7 @@ func getProtoStatusCode(code codes.Code) (protoTrace.Status_StatusCode, error) {
 	}
 }
 
-func getProtoCustomTag(customBlob string) (*protoTrace.CustomTag, error) {
+func getProtoCustomTag(customBlob string) *protoTrace.CustomTag {
 	if len(customBlob) > 0 {
 		firstByte := customBlob[0]
 		customTag := protoTrace.CustomTag{
@@ -346,9 +357,9 @@ func getProtoCustomTag(customBlob string) (*protoTrace.CustomTag, error) {
 			Direction: protoTrace.CustomTag_Incoming,
 			TagValue:  []byte(customBlob[1:]),
 		}
-		return &customTag, nil
+		return &customTag
 	}
-	return nil, nil
+	return nil
 }
 
 func getSerializedResourceForSpanExport(spanResource *resource.Resource) ([]byte, error) {
