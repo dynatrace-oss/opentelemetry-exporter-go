@@ -347,6 +347,7 @@ func getProtoStatusCode(code codes.Code) (protoTrace.Status_StatusCode, error) {
 
 func getProtoCustomTag(customBlob string) *protoTrace.CustomTag {
 	if len(customBlob) > 0 {
+		// The first char in the blob is the type (see OAAD tagging) and can be directly assigned as enum value.
 		firstByte := customBlob[0]
 		customTag := protoTrace.CustomTag{
 			Type:      protoTrace.CustomTag_Type(firstByte),
