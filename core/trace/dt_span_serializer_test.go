@@ -58,7 +58,8 @@ func TestCreateProtoSpan(t *testing.T) {
 	tracer := tp.Tracer("test")
 	_, span := tracer.Start(context.Background(), "test span")
 	span.End()
-	tp.ForceFlush(context.Background())
+	err := tp.ForceFlush(context.Background())
+	require.NoError(t, err)
 
 	dtSpan := span.(*dtSpan)
 
@@ -228,7 +229,7 @@ func TestGetProtoStatusCode(t *testing.T) {
 }
 
 func TestGetProtoStatusCode_InvalidCode(t *testing.T) {
-	_, err := getProtoStatusCode(codes.Code(codes.Ok + 1))
+	_, err := getProtoStatusCode(codes.Ok + 1)
 	require.Error(t, err)
 }
 
@@ -237,12 +238,12 @@ func TestCreateAgSpanEnvelope_WithServerId(t *testing.T) {
 	agSpanEnvelope := createAgSpanEnvelope(clusterSpanEnvelope, 99, nil)
 
 	require.Equal(t, clusterSpanEnvelope, agSpanEnvelope.GetClusterSpanEnvelope())
-	require.Equal(t, int64(99), agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_ServerId).ServerId,
+	require.EqualValues(t, 99, agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_ServerId).ServerId,
 		"ServerId should be set in the envelope when provided to createAgSpanEnvelope")
 
 	agSpanEnvelope = createAgSpanEnvelope(clusterSpanEnvelope, 99, []byte{4, 5, 6})
 	require.Equal(t, clusterSpanEnvelope, agSpanEnvelope.GetClusterSpanEnvelope())
-	require.Equal(t, int64(99), agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_ServerId).ServerId,
+	require.EqualValues(t, 99, agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_ServerId).ServerId,
 		"ServerId should be set in the envelope when provided to createAgSpanEnvelope, even if traceId was provided too")
 }
 
@@ -272,10 +273,10 @@ func TestGetProtoSendReason(t *testing.T) {
 }
 
 func TestGetProtoSendReason_InvalidState(t *testing.T) {
-	_, err := getProtoSendReason(sendState(sendStateNew - 1))
+	_, err := getProtoSendReason(sendStateNew - 1)
 	require.Error(t, err)
 
-	_, err = getProtoSendReason(sendState(sendStateSpanEnded + 1))
+	_, err = getProtoSendReason(sendStateSpanEnded + 1)
 	require.Error(t, err)
 }
 
@@ -319,11 +320,11 @@ func TestGetProtoEvents(t *testing.T) {
 
 	for i, protoEvent := range protoEvents {
 		require.Equal(t, protoEvent.GetName(), events[i].Name)
-		require.Equal(t, protoEvent.GetTimeUnixnano(), uint64(events[i].Time.UnixNano()))
+		require.EqualValues(t, protoEvent.GetTimeUnixnano(), events[i].Time.UnixNano())
 		require.Len(t, protoEvent.GetAttributes(), len(events[i].Attributes))
-		require.Equal(t, protoEvent.GetAttributes()[0].GetKey(), string(events[i].Attributes[0].Key))
+		require.EqualValues(t, protoEvent.GetAttributes()[0].GetKey(), events[i].Attributes[0].Key)
 		require.Equal(t, protoEvent.GetAttributes()[0].GetStringValue(), events[i].Attributes[0].Value.AsString())
-		require.Equal(t, protoEvent.GetDroppedAttributesCount(), uint32(events[i].DroppedAttributeCount))
+		require.EqualValues(t, protoEvent.GetDroppedAttributesCount(), events[i].DroppedAttributeCount)
 	}
 }
 
@@ -357,10 +358,10 @@ func TestGetProtoLinks(t *testing.T) {
 		linkTraceId := links[i].SpanContext.TraceID()
 		require.Equal(t, protoLink.GetTraceId(), linkTraceId[:])
 		linkSpanId := links[i].SpanContext.SpanID()
-		require.Equal(t, protoLink.GetSpanId(), linkSpanId[:])
+		require.EqualValues(t, protoLink.GetSpanId(), linkSpanId[:])
 		require.Len(t, protoLink.GetAttributes(), len(links[i].Attributes))
-		require.Equal(t, protoLink.GetAttributes()[0].GetKey(), string(links[i].Attributes[0].Key))
+		require.EqualValues(t, protoLink.GetAttributes()[0].GetKey(), links[i].Attributes[0].Key)
 		require.Equal(t, protoLink.GetAttributes()[0].GetStringValue(), links[i].Attributes[0].Value.AsString())
-		require.Equal(t, protoLink.GetDroppedAttributesCount(), uint32(links[i].DroppedAttributeCount))
+		require.EqualValues(t, protoLink.GetDroppedAttributesCount(), links[i].DroppedAttributeCount)
 	}
 }
