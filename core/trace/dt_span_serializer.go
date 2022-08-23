@@ -101,8 +101,10 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 	}
 
 	if sendReason := spanMetadata.sendState; sendReason == sendStateSpanEnded || sendReason == sendStateInitialSend {
-		spanMsg.TenantParentSpanId = spanMetadata.tenantParentSpanId[:]
-		
+		if spanMetadata.tenantParentSpanId.IsValid() {
+			spanMsg.TenantParentSpanId = spanMetadata.tenantParentSpanId[:]
+		}
+
 		if parentSpanCtx := span.Parent(); parentSpanCtx.IsValid() {
 			// This is not a root span and has a parent
 			parentSpanId := parentSpanCtx.SpanID()
@@ -176,23 +178,17 @@ func createSerializedClusterSpanEnvelope(spanMsg *protoTrace.Span, customTag *pr
 }
 
 func createAgSpanEnvelope(clusterSpanEnvelope []byte, serverId int64, traceId []byte) *protoCollector.ActiveGateSpanEnvelope {
-	// Some code duplication is necessary here due to DestinationKey
-	// having an internal interface type isActiveGateSpanEnvelope_DestinationKey
-	if serverId != 0 {
-		return &protoCollector.ActiveGateSpanEnvelope{
-			ClusterSpanEnvelope: clusterSpanEnvelope,
-			DestinationKey: &protoCollector.ActiveGateSpanEnvelope_ServerId{
-				ServerId: serverId,
-			},
-		}
-	} else {
-		return &protoCollector.ActiveGateSpanEnvelope{
-			ClusterSpanEnvelope: clusterSpanEnvelope,
-			DestinationKey: &protoCollector.ActiveGateSpanEnvelope_TraceId{
-				TraceId: traceId,
-			},
-		}
+	envelope := &protoCollector.ActiveGateSpanEnvelope{
+		ClusterSpanEnvelope: clusterSpanEnvelope,
 	}
+
+	if serverId != 0 {
+		envelope.DestinationKey = &protoCollector.ActiveGateSpanEnvelope_ServerId{ServerId: serverId}
+	} else {
+		envelope.DestinationKey = &protoCollector.ActiveGateSpanEnvelope_TraceId{TraceId: traceId}
+	}
+
+	return envelope
 }
 
 func getProtoSendReason(sendState sendState) (protoTrace.Span_SendReason, error) {
