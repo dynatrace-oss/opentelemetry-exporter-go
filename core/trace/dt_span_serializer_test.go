@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	protoCollector "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
+	protoCollectorTraces "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
 	protoCommon "dynatrace.com/odin/odin-proto/gen/go/common/v1"
 	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
 	"github.com/stretchr/testify/require"
-	attribute "go.opentelemetry.io/otel/attribute"
-	codes "go.opentelemetry.io/otel/codes"
-	resource "go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -238,12 +238,12 @@ func TestCreateAgSpanEnvelope_WithServerId(t *testing.T) {
 	agSpanEnvelope := createAgSpanEnvelope(clusterSpanEnvelope, 99, nil)
 
 	require.Equal(t, clusterSpanEnvelope, agSpanEnvelope.GetClusterSpanEnvelope())
-	require.EqualValues(t, 99, agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_ServerId).ServerId,
+	require.EqualValues(t, 99, agSpanEnvelope.DestinationKey.(*protoCollectorTraces.ActiveGateSpanEnvelope_ServerId).ServerId,
 		"ServerId should be set in the envelope when provided to createAgSpanEnvelope")
 
 	agSpanEnvelope = createAgSpanEnvelope(clusterSpanEnvelope, 99, []byte{4, 5, 6})
 	require.Equal(t, clusterSpanEnvelope, agSpanEnvelope.GetClusterSpanEnvelope())
-	require.EqualValues(t, 99, agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_ServerId).ServerId,
+	require.EqualValues(t, 99, agSpanEnvelope.DestinationKey.(*protoCollectorTraces.ActiveGateSpanEnvelope_ServerId).ServerId,
 		"ServerId should be set in the envelope when provided to createAgSpanEnvelope, even if traceId was provided too")
 }
 
@@ -252,7 +252,7 @@ func TestCreateAgSpanEnvelope_WithTraceId(t *testing.T) {
 	agSpanEnvelope := createAgSpanEnvelope(clusterSpanEnvelope, 0, []byte{4, 5, 6})
 
 	require.Equal(t, clusterSpanEnvelope, agSpanEnvelope.GetClusterSpanEnvelope())
-	require.Equal(t, []byte{4, 5, 6}, agSpanEnvelope.DestinationKey.(*protoCollector.ActiveGateSpanEnvelope_TraceId).TraceId,
+	require.Equal(t, []byte{4, 5, 6}, agSpanEnvelope.DestinationKey.(*protoCollectorTraces.ActiveGateSpanEnvelope_TraceId).TraceId,
 		"TraceId should be set in the envelope when provided to createAgSpanEnvelope and serverId is 0")
 }
 

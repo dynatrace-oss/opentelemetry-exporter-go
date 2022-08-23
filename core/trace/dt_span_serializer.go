@@ -4,17 +4,17 @@ import (
 	"errors"
 	"fmt"
 
-	attribute "go.opentelemetry.io/otel/attribute"
-	codes "go.opentelemetry.io/otel/codes"
-	resource "go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	trace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 
 	"core/internal/version"
 
 	protoCollectorCommon "dynatrace.com/odin/odin-proto/gen/go/collector/common/v1"
-	protoCollector "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
+	protoCollectorTraces "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
 	protoCommon "dynatrace.com/odin/odin-proto/gen/go/common/v1"
 	protoResource "dynatrace.com/odin/odin-proto/gen/go/resource/v1"
 	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
@@ -25,7 +25,7 @@ func serializeSpans(
 	tenantUUID string,
 	agentId int64) ([]byte, error) {
 
-	agSpanEnvelopes := make([]*protoCollector.ActiveGateSpanEnvelope, 0, len(spans))
+	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
 
 	var resource *resource.Resource
 
@@ -61,7 +61,7 @@ func serializeSpans(
 		return nil, err
 	}
 
-	spanExport := &protoCollector.SpanExport{
+	spanExport := &protoCollectorTraces.SpanExport{
 		TenantUUID:     tenantUUID,
 		AgentId:        agentId,
 		ExportMetaInfo: exportMetaInfo,
@@ -152,7 +152,7 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 }
 
 func createSerializedClusterSpanEnvelope(spanMsg *protoTrace.Span, customTag *protoTrace.CustomTag, pathInfo int32) ([]byte, error) {
-	spanContainer := protoCollector.SpanContainer{
+	spanContainer := protoCollectorTraces.SpanContainer{
 		Spans: []*protoTrace.Span{spanMsg},
 	}
 	serializedSpanContainer, err := proto.Marshal(&spanContainer)
@@ -164,7 +164,7 @@ func createSerializedClusterSpanEnvelope(spanMsg *protoTrace.Span, customTag *pr
 	if customTag != nil {
 		customTags = append(customTags, customTag)
 	}
-	clusterSpanEnvelope := protoCollector.ClusterSpanEnvelope{
+	clusterSpanEnvelope := protoCollectorTraces.ClusterSpanEnvelope{
 		TraceId:       spanMsg.TraceId,
 		PathInfo:      pathInfo,
 		CustomTags:    customTags,
@@ -177,15 +177,15 @@ func createSerializedClusterSpanEnvelope(spanMsg *protoTrace.Span, customTag *pr
 	return serializedClusterSpanEnvelope, nil
 }
 
-func createAgSpanEnvelope(clusterSpanEnvelope []byte, serverId int64, traceId []byte) *protoCollector.ActiveGateSpanEnvelope {
-	envelope := &protoCollector.ActiveGateSpanEnvelope{
+func createAgSpanEnvelope(clusterSpanEnvelope []byte, serverId int64, traceId []byte) *protoCollectorTraces.ActiveGateSpanEnvelope {
+	envelope := &protoCollectorTraces.ActiveGateSpanEnvelope{
 		ClusterSpanEnvelope: clusterSpanEnvelope,
 	}
 
 	if serverId != 0 {
-		envelope.DestinationKey = &protoCollector.ActiveGateSpanEnvelope_ServerId{ServerId: serverId}
+		envelope.DestinationKey = &protoCollectorTraces.ActiveGateSpanEnvelope_ServerId{ServerId: serverId}
 	} else {
-		envelope.DestinationKey = &protoCollector.ActiveGateSpanEnvelope_TraceId{TraceId: traceId}
+		envelope.DestinationKey = &protoCollectorTraces.ActiveGateSpanEnvelope_TraceId{TraceId: traceId}
 	}
 
 	return envelope
