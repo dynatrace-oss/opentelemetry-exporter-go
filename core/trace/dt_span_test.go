@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 func TestDtSpanEndsSdkSpan(t *testing.T) {
@@ -14,8 +13,9 @@ func TestDtSpanEndsSdkSpan(t *testing.T) {
 
 	_, span := tr.Start(context.Background(), "Test span")
 	dynatraceSpan := span.(*dtSpan)
-	sdkSpan := dynatraceSpan.Span.(sdktrace.ReadOnlySpan)
-
+	sdkSpan, err := dynatraceSpan.readOnlySpan()
+	
+	require.NoError(t, err)
 	require.True(t, sdkSpan.EndTime().IsZero())
 	span.End()
 	require.False(t, sdkSpan.EndTime().IsZero())

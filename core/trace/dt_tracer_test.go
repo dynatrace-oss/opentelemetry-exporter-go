@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -27,9 +26,9 @@ func TestDtSpanContainsSdkSpan(t *testing.T) {
 	_, s := tr.Start(context.Background(), "Test span")
 	span := s.(*dtSpan)
 
-	sdkSpan, ok := span.Span.(sdktrace.ReadOnlySpan)
+	sdkSpan, err := span.readOnlySpan()
 	require.NotNil(t, sdkSpan)
-	require.True(t, ok)
+	require.NoError(t, err)
 }
 
 func TestDtSpanContainsValidTracer(t *testing.T) {

@@ -30,12 +30,16 @@ func serializeSpans(
 	var resource *resource.Resource
 
 	for span := range spans {
+		readOnlySpan, err := span.readOnlySpan()
+		if err != nil {
+			return nil, err
+		}
+		resource = readOnlySpan.Resource()
+
 		fw4Tag := span.metadata.fw4Tag
 		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
 
-		var spanMsg *protoTrace.Span
-		var err error
-		spanMsg, resource, err = createProtoSpan(span, customTag)
+		spanMsg, err := createProtoSpan(span, customTag)
 		if err != nil {
 			return nil, err
 		}
@@ -71,19 +75,19 @@ func serializeSpans(
 	return proto.Marshal(spanExport)
 }
 
-func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*protoTrace.Span, *resource.Resource, error) {
+func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*protoTrace.Span, error) {
 	if dtSpan == nil {
-		return nil, nil, errors.New("cannot create proto span from nil dtSpan")
+		return nil, errors.New("cannot create proto span from nil dtSpan")
 	}
 
-	span, ok := dtSpan.Span.(sdktrace.ReadOnlySpan)
-	if !ok {
-		return nil, nil, errors.New("failed to cast span to ReadOnlySpan")
+	span, err := dtSpan.readOnlySpan()
+	if err != nil {
+		return nil, err
 	}
 
 	spanMetadata := dtSpan.metadata
 	if spanMetadata == nil {
-		return nil, nil, errors.New("cannot create proto span when dtSpan metadata is nil")
+		return nil, errors.New("cannot create proto span when dtSpan metadata is nil")
 	}
 
 	spanContext := span.SpanContext()
@@ -91,7 +95,7 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 	spanId := spanContext.SpanID()
 	sendReason, err := getProtoSendReason(spanMetadata.sendState)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	spanMsg := &protoTrace.Span{
 		TraceId:          traceId[:],
@@ -126,29 +130,29 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 		spanMsg.Attributes = append(spanMsg.Attributes, getInstrumentationLibAttrs(span)...)
 		protoAttributes, err := getProtoAttributes(span.Attributes())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		spanMsg.Attributes = append(spanMsg.Attributes, protoAttributes...)
 
 		protoEvents, err := getProtoEvents(span.Events())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		spanMsg.Events = protoEvents
 
 		protoLinks, err := getProtoLinks(span.Links())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		spanMsg.Links = protoLinks
 
 		status, err := getProtoStatus(span.Status())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		spanMsg.Status = status
 	}
-	return spanMsg, span.Resource(), nil
+	return spanMsg, nil
 }
 
 func createSerializedClusterSpanEnvelope(spanMsg *protoTrace.Span, customTag *protoTrace.CustomTag, pathInfo int32) ([]byte, error) {

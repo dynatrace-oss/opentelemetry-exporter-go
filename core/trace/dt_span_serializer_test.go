@@ -18,9 +18,8 @@ import (
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
-	protoSpan, resource, err := createProtoSpan(nil, nil)
+	protoSpan, err := createProtoSpan(nil, nil)
 	require.Nil(t, protoSpan)
-	require.Nil(t, resource)
 	require.Error(t, err)
 }
 
@@ -33,9 +32,8 @@ func TestCreateProtoSpan_NonReadOnlySpan(t *testing.T) {
 		Span:     span,
 		metadata: newDtSpanMetadata(123),
 	}
-	protoSpan, resource, err := createProtoSpan(dtSpan, nil)
+	protoSpan, err := createProtoSpan(dtSpan, nil)
 	require.Nil(t, protoSpan)
-	require.Nil(t, resource)
 	require.Error(t, err)
 }
 
@@ -47,9 +45,8 @@ func TestCreateProtoSpan_NoMetadata(t *testing.T) {
 		Span:     span,
 		metadata: nil,
 	}
-	protoSpan, resource, err := createProtoSpan(dtSpan, nil)
+	protoSpan, err := createProtoSpan(dtSpan, nil)
 	require.Nil(t, protoSpan)
-	require.Nil(t, resource)
 	require.Error(t, err)
 }
 
@@ -67,10 +64,9 @@ func TestCreateProtoSpan(t *testing.T) {
 		Type: protoTrace.CustomTag_Generic,
 		Direction: protoTrace.CustomTag_Incoming,
 	}
-	protoSpan, resource, err := createProtoSpan(dtSpan, customTag)
+	protoSpan, err := createProtoSpan(dtSpan, customTag)
 	require.NoError(t, err)
 	require.NotNil(t, protoSpan)
-	require.NotNil(t, resource)
 	require.NotNil(t, protoSpan.GetTraceId())
 	require.NotNil(t, protoSpan.GetSpanId())
 	require.Nil(t, protoSpan.GetParentSpanId())
