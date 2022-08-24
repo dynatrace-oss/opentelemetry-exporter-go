@@ -27,7 +27,7 @@ func logStartupBanner(config *configuration.DtConfiguration) {
 	}
 
 	logger.Infof("Local timezone .............. %s", getUTCOffsetToLocalTimezone())
-	logger.Infof("Cluster ID .................. %#x", config.ClusterId)
+	logger.Infof("Cluster ID .................. %#x", uint32(config.ClusterId))
 	logger.Infof("Tenant ...................... %s", config.Tenant)
 	logger.Infof("Agent ID .................... %#x", uint64(config.AgentId))
 	logger.Infof("Connection URL .............. %s", config.BaseUrl)
