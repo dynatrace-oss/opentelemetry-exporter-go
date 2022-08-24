@@ -253,8 +253,3 @@ func getExporterResource() *resource.Resource {
 		attribute.Key("telemetry.exporter.version").String(version.FullVersion),
 	)
 }
-
-// Merges the resources, taking the attribute values from resourceB if duplicate keys exist.
-func mergeResources(resourceA, resourceB *resource.Resource) *resource.Resource {
-	return resource.NewSchemaless(append(resourceA.Attributes(), resourceB.Attributes()...)...)
-}
