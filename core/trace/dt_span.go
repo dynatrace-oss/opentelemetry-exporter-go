@@ -34,6 +34,25 @@ func (s *dtSpan) readOnlySpan() (sdktrace.ReadOnlySpan, error) {
 	return nil, errors.New("span is not a ReadOnlySpan")
 }
 
+func (s *dtSpan) SpanContext() trace.SpanContext {
+	spanCtx := s.Span.SpanContext()
+
+	// add FW4 tag to tracestate if available
+	if parentTag := s.metadata.getFw4Tag(); parentTag != nil {
+		tag := parentTag.Propagate(spanCtx)
+
+		ts, err := spanCtx.TraceState().Insert(tag.TraceStateKey(), tag.ToTracestateEntryValueWithoutTraceId())
+		if err != nil {
+			s.tracer.provider.logger.Infof("Can not add FW4 Tag to tracestate: %s", err)
+			return spanCtx
+		}
+
+		return spanCtx.WithTraceState(ts)
+	}
+
+	return spanCtx
+}
+
 // dtSpanFromContext return Dynatrace span instance from given context, nil if Dynatrace span is not found.
 func dtSpanFromContext(ctx context.Context) *dtSpan {
 	if s := trace.SpanFromContext(ctx); s != nil {

@@ -116,3 +116,17 @@ func dtSpanMetadataFromContext(ctx context.Context) *dtSpanMetadata {
 	parentSpan := trace.SpanFromContext(ctx)
 	return dtSpanMetadataFromSpan(parentSpan)
 }
+
+func (p *dtSpanMetadata) getFw4Tag() *fw4.Fw4Tag {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	return p.fw4Tag
+}
+
+func (p *dtSpanMetadata) setFw4Tag(tag *fw4.Fw4Tag) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.fw4Tag = tag
+}

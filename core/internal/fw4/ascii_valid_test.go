@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -26,8 +27,8 @@ func spanIdOrPanic(hex string) trace.SpanID {
 func setDummyTagValues(fw4 Fw4Tag) Fw4Tag {
 	fw4.ClusterID = 666
 	fw4.ServerID = 1
-	fw4.agentID = -332051242
-	fw4.tagID = 1
+	fw4.AgentID = -332051242
+	fw4.TagID = 1
 	fw4.encodedLinkID = 2
 	fw4.TenantID = 113948091
 	fw4.PathInfo = 12345
@@ -53,8 +54,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       0x20e,
-				tagID:         0,
+				AgentID:       0x20e,
+				TagID:         0,
 				encodedLinkID: 0,
 				TenantID:      17,
 				PathInfo:      77,
@@ -74,8 +75,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       2,
-				tagID:         3,
+				AgentID:       2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      17,
 				PathInfo:      12345,
@@ -149,8 +150,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     666,
 				ServerID:      2147483647,
-				agentID:       -2147483648,
-				tagID:         1,
+				AgentID:       -2147483648,
+				TagID:         1,
 				encodedLinkID: 2,
 				TenantID:      113948091,
 				PathInfo:      123456,
@@ -221,8 +222,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       -2,
-				tagID:         3,
+				AgentID:       -2,
+				TagID:         3,
 				encodedLinkID: 4,
 				TenantID:      17,
 				PathInfo:      12345,
@@ -239,8 +240,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       526,
-				tagID:         0,
+				AgentID:       526,
+				TagID:         0,
 				encodedLinkID: 0,
 				TenantID:      17,
 				PathInfo:      1111,
@@ -324,8 +325,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      4,
-				agentID:       1,
-				tagID:         2,
+				AgentID:       1,
+				TagID:         2,
 				encodedLinkID: 3,
 				TenantID:      17,
 				PathInfo:      1,
@@ -343,8 +344,8 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      4,
-				agentID:       1,
-				tagID:         2,
+				AgentID:       1,
+				TagID:         2,
 				encodedLinkID: 3,
 				TenantID:      17,
 				PathInfo:      1,
@@ -363,7 +364,7 @@ func TestParseFormatFw4(t *testing.T) {
 			Fw4Tag{
 				ClusterID:     129,
 				ServerID:      1,
-				agentID:       526,
+				AgentID:       526,
 				encodedLinkID: 2147483648, // 2**31 => -x == x
 				TenantID:      17,
 				PathInfo:      8671,
@@ -373,6 +374,60 @@ func TestParseFormatFw4(t *testing.T) {
 				payloadBitset: 1,
 				TraceID:       traceIdOrPanic("1c90dcad033ff3444ba500dc717df3e6"),
 				SpanID:        spanIdOrPanic("e0989607a1448c20"),
+			},
+			"",
+			"",
+		},
+		{
+			"negative tenant id",
+			"968a934b-81@dt=fw4;1;2;3;4;0;0;3039",
+			"FW4;129;1;2;3;4;-1769303221;12345",
+			Fw4Tag{
+				ClusterID:     129,
+				ServerID:      1,
+				AgentID:       2,
+				TagID:         3,
+				encodedLinkID: 4,
+				TenantID:      -1769303221,
+				PathInfo:      12345,
+				entryTagID:    emptyEntryTagId,
+				entryAgentID:  emptyEntryAgentId,
+			},
+			"",
+			"",
+		},
+		{
+			"negative cluster id",
+			"9b-993f1f5b@dt=fw4;1;2;3;4;0;0;3039",
+			"FW4;-1723916453;1;2;3;4;155;12345",
+			Fw4Tag{
+				ClusterID:     -1723916453,
+				ServerID:      1,
+				AgentID:       2,
+				TagID:         3,
+				encodedLinkID: 4,
+				TenantID:      155,
+				PathInfo:      12345,
+				entryTagID:    emptyEntryTagId,
+				entryAgentID:  emptyEntryAgentId,
+			},
+			"",
+			"",
+		},
+		{
+			"negative tenant and cluster id",
+			"968a934b-993f1f5b@dt=fw4;1;2;3;4;0;0;3039",
+			"FW4;-1723916453;1;2;3;4;-1769303221;12345",
+			Fw4Tag{
+				ClusterID:     -1723916453,
+				ServerID:      1,
+				AgentID:       2,
+				TagID:         3,
+				encodedLinkID: 4,
+				TenantID:      -1769303221,
+				PathInfo:      12345,
+				entryTagID:    emptyEntryTagId,
+				entryAgentID:  emptyEntryAgentId,
 			},
 			"",
 			"",
@@ -445,4 +500,47 @@ func TestParseHexInt(t *testing.T) {
 	if result != -332051242 {
 		t.Fatalf("Unexpected result %v", result)
 	}
+}
+
+func TestFW4TagWithTraceIdToTracestateEntryValue(t *testing.T) {
+	fw4, err := ParseXDynatrace("FW4;129;1;526;0;0;17;12345;ce1f;2h01;6h11223344556677889900112233445566;7h663055fc5bca216f")
+	require.NoError(t, err)
+
+	require.Equal(t, fw4.ToTracestateEntryValueWithoutTraceId(), "fw4;1;20e;0;0;0;0;3039;28aa;2h01;7h663055fc5bca216f")
+	require.Equal(t, fw4.ToTracestateEntryValue(), "fw4;1;20e;0;0;0;0;3039;ce1f;2h01;6h11223344556677889900112233445566;7h663055fc5bca216f")
+}
+
+func TestFW4TagWithoutTraceIdToTracestateEntryValue(t *testing.T) {
+	fw4, err := ParseXDynatrace("FW4;129;1;526;0;0;17;12345;28aa;2h01;7h663055fc5bca216f")
+	require.NoError(t, err)
+
+	require.Equal(t, fw4.ToTracestateEntryValueWithoutTraceId(), "fw4;1;20e;0;0;0;0;3039;28aa;2h01;7h663055fc5bca216f")
+	// FW4 tag does not contain traceId, thus there must not be traceId in tracestate at all
+	require.Equal(t, fw4.ToTracestateEntryValue(), "fw4;1;20e;0;0;0;0;3039;28aa;2h01;7h663055fc5bca216f")
+}
+
+func TestGetMatchingFw4FromXDynatrace(t *testing.T) {
+	var tenantId, clusterId int32 = 17, 129
+	tag, err := GetMatchingFw4FromXDynatrace("FW4;129;1;526;0;0;17;12345;ce1f;2h01;6h11223344556677889900112233445566;7h663055fc5bca216f", tenantId, clusterId)
+	require.NoError(t, err)
+
+	require.EqualValues(t, tag.TenantID, tenantId)
+	require.EqualValues(t, tag.ClusterID, clusterId)
+	require.Equal(t, tag.TraceID.String(), "11223344556677889900112233445566")
+	require.Equal(t, tag.SpanID.String(), "663055fc5bca216f")
+}
+
+func TestGetMatchingFw4FromTracestate(t *testing.T) {
+	var tenantId, clusterId int32 = 17, 129
+	ts := trace.TraceState{}
+	ts, err := ts.Insert("11-81@dt", "fw4;1;ec354cd6;1;2;0;0;3039;fa64;1h48656c6c6f2c20576f726c6421;2h0123;7h8877665544332211")
+	require.NoError(t, err)
+
+	tag, err := GetMatchingFw4FromTracestate(ts, tenantId, clusterId)
+	require.NoError(t, err)
+
+	require.EqualValues(t, tag.TenantID, tenantId)
+	require.EqualValues(t, tag.ClusterID, clusterId)
+	require.False(t, tag.TraceID.IsValid())
+	require.Equal(t, tag.SpanID.String(), "8877665544332211")
 }

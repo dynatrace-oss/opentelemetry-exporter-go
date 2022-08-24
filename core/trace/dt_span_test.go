@@ -5,6 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
+
+	"core/internal/fw4"
 )
 
 func TestDtSpanEndsSdkSpan(t *testing.T) {
@@ -27,4 +32,42 @@ func TestDtSpanGetTracerProvider(t *testing.T) {
 	_, s := tr.Start(context.Background(), "Test span")
 
 	require.Equal(t, tp, s.TracerProvider())
+}
+
+func TestDtSpanGetSpanContext(t *testing.T) {
+	traceId, err := trace.TraceIDFromHex("11223344556677889900112233445566")
+	require.NoError(t, err)
+
+	spanId, err := trace.SpanIDFromHex("8877665544332211")
+	require.NoError(t, err)
+
+	var ts trace.TraceState
+	ts, err = ts.Insert("custom", "00f067aa0ba902b7")
+	require.NoError(t, err)
+
+	config := trace.SpanContextConfig{
+		TraceID:    traceId,
+		SpanID:     spanId,
+		TraceFlags: trace.FlagsSampled,
+		TraceState: ts,
+	}
+
+	spanCtx := trace.NewSpanContext(config)
+	ctx := trace.ContextWithSpanContext(context.Background(), spanCtx)
+
+	spanMetadata := newDtSpanMetadata(0)
+	spanMetadata.fw4Tag = fw4.NewFw4Tag(testConfig.ClusterId, testConfig.TenantId(), spanCtx)
+	spanMetadata.fw4Tag.PathInfo = 0
+
+	span := &dtSpan{
+		Span:     trace.SpanFromContext(ctx),
+		metadata: spanMetadata,
+	}
+
+	spanCtx = span.SpanContext()
+	require.Equal(t, spanCtx.TraceID(), traceId)
+	require.Equal(t, spanCtx.SpanID(), spanId)
+
+	// serialized FW4 tag must be added to tracestate
+	require.Equal(t, spanCtx.TraceState().String(), "34d2ae74-7b@dt=fw4;0;0;0;0;0;0;0;7db5;2h01;7h8877665544332211,custom=00f067aa0ba902b7")
 }
