@@ -61,7 +61,7 @@ func TestCreateProtoSpan(t *testing.T) {
 	dtSpan := span.(*dtSpan)
 
 	customTag := &protoTrace.CustomTag{
-		Type: protoTrace.CustomTag_Generic,
+		Type:      protoTrace.CustomTag_Generic,
 		Direction: protoTrace.CustomTag_Incoming,
 	}
 	protoSpan, err := createProtoSpan(dtSpan, customTag)
@@ -72,6 +72,28 @@ func TestCreateProtoSpan(t *testing.T) {
 	require.Nil(t, protoSpan.GetParentSpanId())
 	require.Equal(t, protoSpan.GetName(), "test span")
 	require.Same(t, protoSpan.GetCustomTag(), customTag)
+}
+
+func TestGetFirstResource(t *testing.T) {
+	tracer := createTracer().(*dtTracer)
+	_, span1 := tracer.Start(context.Background(), "span1")
+	_, span2 := tracer.Start(context.Background(), "span2")
+	_, span3 := tracer.Start(context.Background(), "span3")
+
+	spans := make(dtSpanSet)
+	spans[span1.(*dtSpan)] = struct{}{}
+	spans[span2.(*dtSpan)] = struct{}{}
+	spans[span3.(*dtSpan)] = struct{}{}
+	resource, err := getFirstResource(spans)
+	require.NoError(t, err)
+	require.NotNil(t, resource)
+	require.Same(t, resource, span1.(*dtSpan).Span.(sdktrace.ReadOnlySpan).Resource())
+}
+
+func TestGetFirstResource_FailsIfSetEmpty(t *testing.T) {
+	resource, err := getFirstResource(make(dtSpanSet))
+	require.Error(t, err)
+	require.Nil(t, resource)
 }
 
 func TestMergeResources_WithDuplicateKey(t *testing.T) {

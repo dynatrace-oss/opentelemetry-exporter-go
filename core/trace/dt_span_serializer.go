@@ -27,15 +27,7 @@ func serializeSpans(
 
 	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
 
-	var resource *resource.Resource
-
 	for span := range spans {
-		readOnlySpan, err := span.readOnlySpan()
-		if err != nil {
-			return nil, err
-		}
-		resource = readOnlySpan.Resource()
-
 		fw4Tag := span.metadata.fw4Tag
 		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
 
@@ -60,6 +52,10 @@ func serializeSpans(
 		return nil, err
 	}
 
+	resource, err := getFirstResource(spans)
+	if err != nil {
+		return nil, err
+	}
 	serializedResource, err := getSerializedResourceForSpanExport(resource)
 	if err != nil {
 		return nil, err
@@ -73,6 +69,17 @@ func serializeSpans(
 		Spans:          agSpanEnvelopes,
 	}
 	return proto.Marshal(spanExport)
+}
+
+func getFirstResource(spans dtSpanSet) (*resource.Resource, error) {
+	for span := range spans {
+		readOnlySpan, err := span.readOnlySpan()
+		if err != nil {
+			return nil, err
+		}
+		return readOnlySpan.Resource(), nil
+	}
+	return nil, errors.New("span set is empty, can't retrieve resource")
 }
 
 func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*protoTrace.Span, error) {
