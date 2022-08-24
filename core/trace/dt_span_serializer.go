@@ -214,10 +214,29 @@ func createInstrumentationLibAttrs(span sdktrace.ReadOnlySpan) []*protoCommon.At
 	return []*protoCommon.AttributeKeyValue{instrumentationLibNameAttr, instrumentationLibVersionAttr}
 }
 
+func getResourceForSpanExport(spanResource *resource.Resource) (*resource.Resource, error) {
+	mergedResource, err := resource.Merge(spanResource, getExporterResource())
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure the exported resource contains the following attributes from resource.Default():
+	// - telemetry.sdk.language
+	// - telemetry.sdk.name
+	// - telemetry.sdk.version
+	mergedResourceWithDefaults, err := resource.Merge(resource.Default(), mergedResource)
+	if err != nil {
+		return nil, err
+	}
+	return mergedResourceWithDefaults, nil
+}
+
 func getSerializedResourceForSpanExport(spanResource *resource.Resource) ([]byte, error) {
-	exporterResource := getExporterResource()
-	mergedResource := mergeResources(spanResource, exporterResource)
-	protoAttributes, err := getProtoAttributes(mergedResource.Attributes())
+	resourceForExport, err := getResourceForSpanExport(spanResource)
+	if err != nil {
+		return nil, err
+	}	
+	protoAttributes, err := getProtoAttributes(resourceForExport.Attributes())
 	if err != nil {
 		return nil, err
 	}

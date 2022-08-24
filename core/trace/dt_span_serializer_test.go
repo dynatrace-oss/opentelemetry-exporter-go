@@ -93,32 +93,57 @@ func TestGetFirstResource_FailsIfSetEmpty(t *testing.T) {
 	require.Nil(t, resource)
 }
 
-func TestMergeResources_WithDuplicateKey(t *testing.T) {
-	resource1 := resource.NewSchemaless(
-		attribute.String("A", "res1_A"),
-		attribute.String("B", "res1_B"),
-	)
+func TestGetResourceForSpanExport(t *testing.T) {
+	spanResource := resource.NewSchemaless(attribute.String("key", "value"))
+	
+	exportResource, err := getResourceForSpanExport(spanResource)
+	require.NoError(t, err)
 
-	resource2 := resource.NewSchemaless(
-		attribute.String("A", "res2_A"),
-		attribute.String("C", "res2_C"),
-	)
+	exportResourceAttributes := exportResource.Attributes()
+	require.NotEmpty(t, exportResourceAttributes)
 
-	merged := mergeResources(resource1, resource2)
+	hasAttribute := func(key string) bool {
+		for _, attr := range exportResourceAttributes {
+			if attr.Key == attribute.Key(key) {
+				return true
+			}
+		}
+		return false
+	}
 
-	require.ElementsMatch(t, []attribute.KeyValue{
-		attribute.String("A", "res2_A"),
-		attribute.String("B", "res1_B"),
-		attribute.String("C", "res2_C"),
-	}, merged.Attributes(), "Duplicate key should be overwritten by second arg of mergeResources")
+	require.True(t, hasAttribute("key"))
+	// Exporter resource attributes
+	require.True(t, hasAttribute("telemetry.exporter.name"))
+	require.True(t, hasAttribute("telemetry.exporter.version"))
+	// Default SDK resource attributes
+	require.True(t, hasAttribute("telemetry.sdk.language"))
+	require.True(t, hasAttribute("telemetry.sdk.name"))
+	require.True(t, hasAttribute("telemetry.sdk.version"))
 }
 
-func TestMergeResources_WithoutAttributes(t *testing.T) {
-	resource1 := resource.NewSchemaless()
-	resource2 := resource.NewSchemaless()
-	merged := mergeResources(resource1, resource2)
+func TestGetResourceForSpanExport_SpanResourceTakesPrecedence(t *testing.T) {
+	spanResource := resource.NewSchemaless(
+		attribute.String("key", "value"),
+		attribute.String("telemetry.sdk.language", "test_sdk_language"),
+	)
+	exportResource, err := getResourceForSpanExport(spanResource)
+	require.NoError(t, err)
 
-	require.Empty(t, merged.Attributes(), "Merged resource attributes should be returned if both resources have no attributes")
+	exportResourceAttributes := exportResource.Attributes()
+	require.NotEmpty(t, exportResourceAttributes)
+
+	hasAttributeWithValue := func(key, value string) bool {
+		for _, attr := range exportResourceAttributes {
+			if attr.Key == attribute.Key(key) && attr.Value.AsString() == value {
+				return true
+			}
+		}
+		return false
+	}
+
+	require.True(t, hasAttributeWithValue("key", "value"))
+	// Attribute value from span resource should take precedence over default
+	require.True(t, hasAttributeWithValue("telemetry.sdk.language", "test_sdk_language"))
 }
 
 func TestCreateAgSpanEnvelope_WithServerId(t *testing.T) {
