@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 )
 
 type debugLogFlags map[string]bool

@@ -22,7 +22,7 @@ import (
 	"go.opentelemetry.io/otel"
 	trace "go.opentelemetry.io/otel/trace"
 
-	"core/internal/fw4"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 )
 
 func createTracer() trace.Tracer {

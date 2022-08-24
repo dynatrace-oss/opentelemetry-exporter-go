@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	"core/configuration"
-	"core/internal/fw4"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 
 	"go.opentelemetry.io/otel/trace"
 )

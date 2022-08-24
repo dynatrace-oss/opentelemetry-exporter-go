@@ -19,7 +19,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 )
 
 type dtTracer struct {

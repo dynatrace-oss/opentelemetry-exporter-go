@@ -23,8 +23,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	protoCommon "dynatrace.com/odin/odin-proto/gen/go/common/v1"
-	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
+	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
+	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
 
 func TestGetProtoCustomTag(t *testing.T) {

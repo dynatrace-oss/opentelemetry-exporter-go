@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 
-	"core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 )
 
 var testConfig *configuration.DtConfiguration

@@ -23,8 +23,8 @@ import (
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"core/configuration"
-	"core/internal/logger"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 )
 
 var errInvalidSpanExporter = errors.New("span exporter is invalid")

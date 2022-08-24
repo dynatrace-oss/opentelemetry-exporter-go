@@ -21,9 +21,9 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
-	"core/configuration"
-	"core/internal/fw4"
-	"core/internal/logger"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 )
 
 const (

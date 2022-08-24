@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"time"
 
-	"core/configuration"
-	"core/internal/logger"
-	"core/internal/version"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
 )
 
 type exportType int
