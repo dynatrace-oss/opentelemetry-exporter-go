@@ -26,8 +26,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"core/configuration"
-	"core/internal/version"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
 )
 
 func TestDtSpanExporterVerifyNewRequest(t *testing.T) {

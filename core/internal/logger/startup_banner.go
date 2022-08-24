@@ -20,8 +20,8 @@ import (
 	"runtime"
 	"time"
 
-	"core/configuration"
-	"core/internal/version"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
 )
 
 func logStartupBanner(config *configuration.DtConfiguration) {

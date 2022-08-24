@@ -24,7 +24,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"core/internal/logger"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 )
 
 var errNoDtTracestateEntry = errors.New("can not find @dt entry in given tracestate")

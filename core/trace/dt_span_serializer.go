@@ -22,13 +22,13 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/protobuf/proto"
 
-	"core/internal/version"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
 
-	protoCollectorCommon "dynatrace.com/odin/odin-proto/gen/go/collector/common/v1"
-	protoCollectorTraces "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
-	protoCommon "dynatrace.com/odin/odin-proto/gen/go/common/v1"
-	protoResource "dynatrace.com/odin/odin-proto/gen/go/resource/v1"
-	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
+	protoCollectorCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/common/v1"
+	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
+	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
+	protoResource "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/resource/v1"
+	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
 
 func serializeSpans(

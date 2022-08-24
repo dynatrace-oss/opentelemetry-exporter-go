@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 )
 
 func TestSpanWatchlistMaximumSizeIsReached(t *testing.T) {

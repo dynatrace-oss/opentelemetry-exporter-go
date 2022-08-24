@@ -25,8 +25,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	protoCollectorTraces "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
-	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
+	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
+	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {

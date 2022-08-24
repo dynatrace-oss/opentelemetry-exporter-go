@@ -24,8 +24,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"core/configuration"
-	"core/internal/logger"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 )
 
 var errInvalidSpanProcessor = errors.New("span processor is invalid")

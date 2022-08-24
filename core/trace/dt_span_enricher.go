@@ -19,8 +19,8 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"core/internal/fw4"
-	"core/trace/internal/util"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 )
 
 func createSpanMetadata(

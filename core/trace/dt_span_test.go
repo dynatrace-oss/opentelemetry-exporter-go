@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 
-	"core/internal/fw4"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 )
 
 func TestDtSpanEndsSdkSpan(t *testing.T) {

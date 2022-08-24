@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"strings"
 
-	"core/configuration/internal/util"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration/internal/util"
 )
 
 const (
