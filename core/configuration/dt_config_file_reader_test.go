@@ -41,7 +41,6 @@ func TestJsonConfigFileReader_ValidFileIsCorrectlyDeserialized(t *testing.T) {
 	assert.Equal(t, config.Tenant, "schnitzel")
 	assert.Equal(t, config.Connection.BaseUrl, "https://ag.xyz.com")
 	assert.Equal(t, config.Connection.AuthToken, "dt0a01.schnitzel.xsdffdedr")
-	assert.Equal(t, config.Connection.Proxy, "https://user:pass@foo.bar.com:8081")
 	assert.Equal(t, config.RUM.ClientIpHeaders, []string{"x-forwarded-for"})
 	assert.Equal(t, config.Testability.SpanProcessingIntervalMs, 3000)
 	assert.Equal(t, config.Testability.KeepAliveIntervalMs, 30000)

@@ -13,7 +13,6 @@ type fileConfig struct {
 	Connection  struct {
 		AuthToken string
 		BaseUrl   string
-		Proxy     string
 	}
 	RUM struct {
 		ClientIpHeaders []string

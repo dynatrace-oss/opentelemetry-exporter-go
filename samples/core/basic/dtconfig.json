@@ -4,8 +4,7 @@
     "Tenant": "<add>",
     "Connection": {
         "AuthToken": "<add>",
-        "BaseUrl": "http://example.com",
-        "Proxy": "<add>"
+        "BaseUrl": "http://example.com"
     },
     "RUM": {
         "ClientIpHeaders": [
