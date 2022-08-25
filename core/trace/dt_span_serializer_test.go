@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	protoCollectorTraces "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
-	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+
+	protoCollectorTraces "dynatrace.com/odin/odin-proto/gen/go/collector/traces/v1"
+	protoTrace "dynatrace.com/odin/odin-proto/gen/go/trace/v1"
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
