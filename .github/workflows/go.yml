@@ -19,12 +19,6 @@ jobs:
           working-directory: core
           args: --verbose
 
-      - name: Lint samples module
-        uses: golangci/golangci-lint-action@v3
-        with:
-          working-directory: samples
-          args: --verbose
-
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -38,10 +32,6 @@ jobs:
 
       - name: Build core module
         working-directory: core
-        run: go build -v ./...
-
-      - name: Build samples module
-        working-directory: samples
         run: go build -v ./...
 
       - name: Test
