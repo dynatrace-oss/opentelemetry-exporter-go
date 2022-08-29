@@ -71,8 +71,9 @@ func TestLocalParentWithServerId(t *testing.T) {
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-01")
 	c.Set(tracestateHeader, "34d2ae74-7b@dt=fw4;fffffff8;0;0;0;0;0;0;7db5;2h01;7h8877665544332211")
 
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 	remoteCtx := p.Extract(context.Background(), c)
 
 	tp, _ := newDtTracerProviderWithTestExporter()
@@ -110,8 +111,9 @@ func TestRemoteParentWithTracestateAndWrongTenantId(t *testing.T) {
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-aaffffeebbaabbee-01")
 	c.Set(tracestateHeader, "6cab5bb-7b@dt=fw4;fffffff8;0;0;0;0;0;0;7db5;2h01;7h8877665544332211")
 
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	remoteCtx := p.Extract(context.Background(), c)
 

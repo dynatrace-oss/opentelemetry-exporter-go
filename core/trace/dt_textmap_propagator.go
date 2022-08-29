@@ -16,8 +16,6 @@ package trace
 
 import (
 	"context"
-	"fmt"
-
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
@@ -38,11 +36,10 @@ type DtTextMapPropagator struct {
 	config        *configuration.DtConfiguration
 }
 
-func NewTextMapPropagator() *DtTextMapPropagator {
+func NewTextMapPropagator() (*DtTextMapPropagator, error) {
 	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
 	if err != nil {
-		fmt.Println("Dynatrace TextMapPropagator cannot be instantiated due to a configuration error: " + err.Error())
-		return nil
+		return nil, err
 	}
 
 	p := &DtTextMapPropagator{
@@ -52,7 +49,7 @@ func NewTextMapPropagator() *DtTextMapPropagator {
 	}
 
 	p.logger.Debug("TextMapPropagator created")
-	return p
+	return p, nil
 }
 
 func (p *DtTextMapPropagator) Inject(ctx context.Context, carrier propagation.TextMapCarrier) {
