@@ -17,7 +17,6 @@ package trace
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -39,11 +38,10 @@ type DtTracerProvider struct {
 	config         *configuration.DtConfiguration
 }
 
-func NewTracerProvider(opts ...sdktrace.TracerProviderOption) *DtTracerProvider {
+func NewTracerProvider(opts ...sdktrace.TracerProviderOption) (*DtTracerProvider, error) {
 	config, err := configuration.GlobalConfigurationProvider.GetConfiguration()
 	if err != nil {
-		fmt.Println("Dynatrace TracerProvider cannot be instantiated due to a configuration error: " + err.Error())
-		return nil
+		return nil, err
 	}
 
 	tp := &DtTracerProvider{
@@ -56,7 +54,7 @@ func NewTracerProvider(opts ...sdktrace.TracerProviderOption) *DtTracerProvider 
 	}
 
 	tp.logger.Debug("TracerProvider created")
-	return tp
+	return tp, nil
 }
 
 func (p *DtTracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.Tracer {
