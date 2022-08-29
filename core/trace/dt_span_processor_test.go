@@ -87,7 +87,7 @@ func newDtTracerProviderWithTestExporter() (*DtTracerProvider, *testExporter) {
 		numIterations:       1,
 	}
 
-	if tp := NewTracerProvider(); tp != nil {
+	if tp, err := NewTracerProvider(); err == nil {
 		exporter := newTestExporter(defaultTextExporterOptions)
 		tp.processor.exporter = exporter
 

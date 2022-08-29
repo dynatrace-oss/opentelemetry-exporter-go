@@ -117,7 +117,10 @@ func TestDtSpanContainsMetadata(t *testing.T) {
 
 func TestNotSampledDtSpanContainMetadata(t *testing.T) {
 	sampler := sdktrace.WithSampler(sdktrace.NeverSample())
-	tp := NewTracerProvider(sampler)
+	tp, err := NewTracerProvider(sampler)
+	require.NotNil(t, tp)
+	require.Nil(t, err)
+
 	tp.processor.exporter = newTestExporter(testExporterOptions{
 		iterationIntervalMs: 500,
 		numIterations:       1,
