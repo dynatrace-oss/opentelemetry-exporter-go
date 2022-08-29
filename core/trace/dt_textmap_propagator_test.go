@@ -31,8 +31,9 @@ const (
 )
 
 func TestPropagatorExtractInvalidSpanContext(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, invalidTraceparent)
@@ -42,8 +43,9 @@ func TestPropagatorExtractInvalidSpanContext(t *testing.T) {
 }
 
 func TestPropagatorExtractEmptyTaggingHeaders(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	ctx := p.Extract(context.Background(), c)
@@ -52,8 +54,9 @@ func TestPropagatorExtractEmptyTaggingHeaders(t *testing.T) {
 }
 
 func TestPropagatorExtractInvalidXDynatrace(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;67;886222452;0")
@@ -64,8 +67,9 @@ func TestPropagatorExtractInvalidXDynatrace(t *testing.T) {
 }
 
 func TestPropagatorExtractOnlyXDynatrace(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;-2147483581;886222452;0;e03f;2h01;6h11223344556677889900112233445566;7h8877665544332211")
@@ -97,8 +101,9 @@ func TestPropagatorExtractOnlyXDynatrace(t *testing.T) {
 }
 
 func TestPropagatorExtractXDynatraceWithInvalidTraceIdSpanId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;-2147483581;886222452;0;e03f;2h01;6h11223344556677889900112233445566;7h8877665544332211")
@@ -131,8 +136,9 @@ func TestPropagatorExtractXDynatraceWithInvalidTraceIdSpanId(t *testing.T) {
 }
 
 func TestPropagatorExtractXDynatracePreferredMismatchTraceId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;67;886222452;0;e03f;2h01;6h11223344556677889900112233445566;7h8877665544332211")
@@ -168,8 +174,9 @@ func TestPropagatorExtractXDynatracePreferredMismatchTraceId(t *testing.T) {
 }
 
 func TestPropagatorExtractXDynatracePreferredMatchingTraceId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;67;886222452;0;e03f;2h01;6h11223344556677889900112233445566;7h8877665544332211")
@@ -205,8 +212,9 @@ func TestPropagatorExtractXDynatracePreferredMatchingTraceId(t *testing.T) {
 }
 
 func TestPropagatorExtractXDynatraceTraceparentWithoutTracestate(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;67;886222452;0;e03f;2h01;6h11223344556677889900112233445566;7h8877665544332211")
@@ -239,8 +247,9 @@ func TestPropagatorExtractXDynatraceTraceparentWithoutTracestate(t *testing.T) {
 }
 
 func TestPropagatorExtractXDynatraceForeignWithTraceparent(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;656;5;15;33;67;113948091;0;e03f;2h01;6h11223344556677889900112233445566;7h8877665544332211")
@@ -272,8 +281,9 @@ func TestPropagatorExtractXDynatraceForeignWithTraceparent(t *testing.T) {
 }
 
 func TestPropagatorExtractOnlyXDynatraceWithMissingTraceIdSpanId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(xDtHeader, "FW4;123;5;15;33;67;886222452;0")
@@ -283,8 +293,9 @@ func TestPropagatorExtractOnlyXDynatraceWithMissingTraceIdSpanId(t *testing.T) {
 }
 
 func TestPropagatorExtractParseTracestateZeroServerIdMismatchSpanId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-01")
@@ -314,8 +325,9 @@ func TestPropagatorExtractParseTracestateZeroServerIdMismatchSpanId(t *testing.T
 }
 
 func TestPropagatorExtractParseTracestateMismatchTraceId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-01")
@@ -328,8 +340,9 @@ func TestPropagatorExtractParseTracestateMismatchTraceId(t *testing.T) {
 }
 
 func TestPropagatorExtractParseTracestateNegativeServerMatchingSpanId(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-01")
@@ -359,8 +372,9 @@ func TestPropagatorExtractParseTracestateNegativeServerMatchingSpanId(t *testing
 }
 
 func TestPropagatorExtractParseForeignTracestate(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-01")
@@ -387,8 +401,9 @@ func TestPropagatorExtractParseForeignTracestate(t *testing.T) {
 }
 
 func TestPropagatorExtractOnlyTraceparent(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-00")
@@ -413,8 +428,9 @@ func TestPropagatorExtractOnlyTraceparent(t *testing.T) {
 }
 
 func TestPropagatorInjectInvalidSpanContext(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	config := trace.SpanContextConfig{
 		TraceID:    trace.TraceID{},
@@ -431,8 +447,9 @@ func TestPropagatorInjectInvalidSpanContext(t *testing.T) {
 }
 
 func TestPropagatorInjectMinimalSpanContext(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	traceId, err := trace.TraceIDFromHex("11223344556677889900112233445566")
 	require.NoError(t, err)
@@ -460,8 +477,9 @@ func TestPropagatorInjectMinimalSpanContext(t *testing.T) {
 }
 
 func TestPropagatorInjectValuesOfFieldsCall(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	traceId, err := trace.TraceIDFromHex("11223344556677889900112233445566")
 	require.NoError(t, err)
@@ -492,8 +510,9 @@ func TestPropagatorInjectValuesOfFieldsCall(t *testing.T) {
 }
 
 func TestPropagatorInjectExtendTracestate(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	traceId, err := trace.TraceIDFromHex("11223344556677889900112233445566")
 	require.NoError(t, err)
@@ -529,8 +548,9 @@ func TestPropagatorInjectExtendTracestate(t *testing.T) {
 }
 
 func TestPropagatorInjectUpdateTracestate(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	traceId, err := trace.TraceIDFromHex("11223344556677889900112233445566")
 	require.NoError(t, err)
@@ -572,8 +592,9 @@ func TestPropagatorInjectUpdateTracestate(t *testing.T) {
 }
 
 func TestPropagatorInjectSetLastPropagationTime(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	traceId, err := trace.TraceIDFromHex("11223344556677889900112233445566")
 	require.NoError(t, err)
@@ -598,8 +619,9 @@ func TestPropagatorInjectSetLastPropagationTime(t *testing.T) {
 }
 
 func TestPropagatorIgnoreNonSampledFlagFromSpanContext(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-00")
@@ -619,8 +641,9 @@ func TestPropagatorIgnoreNonSampledFlagFromSpanContext(t *testing.T) {
 }
 
 func TestPropagatorIgnoreSampledFlagFromSpanContext(t *testing.T) {
-	p := NewTextMapPropagator()
+	p, err := NewTextMapPropagator()
 	require.NotNil(t, p)
+	require.NoError(t, err)
 
 	c := propagation.HeaderCarrier{}
 	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-01")
