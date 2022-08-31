@@ -262,7 +262,7 @@ func getSerializedResourceForSpanExport(spanResource *resource.Resource) ([]byte
 
 func getExporterResource() *resource.Resource {
 	return resource.NewSchemaless(
-		attribute.Key(semconv.TelemetryExporterName).String("odin"),
+		attribute.Key(semconv.TelemetryExporterName).String(semconv.TelemetryExporterNameOdin),
 		attribute.Key(semconv.TelemetryExporterVersion).String(version.FullVersion),
 	)
 }
