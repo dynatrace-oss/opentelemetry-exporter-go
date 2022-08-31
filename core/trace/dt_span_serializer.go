@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/semconv"
 
 	protoCollectorCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/common/v1"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
@@ -63,11 +64,11 @@ func serializeSpans(
 		return nil, err
 	}
 
-	resource, err := getFirstResource(spans)
+	firstSpanResource, err := getFirstResource(spans)
 	if err != nil {
 		return nil, err
 	}
-	serializedResource, err := getSerializedResourceForSpanExport(resource)
+	serializedResource, err := getSerializedResourceForSpanExport(firstSpanResource)
 	if err != nil {
 		return nil, err
 	}
@@ -217,12 +218,12 @@ func createInstrumentationLibAttrs(span sdktrace.ReadOnlySpan) []*protoCommon.At
 	instrumentationLib := span.InstrumentationLibrary()
 	instrumentationLibNameAttr := &protoCommon.AttributeKeyValue{
 		Type:        protoCommon.AttributeKeyValue_STRING,
-		Key:         "otel.library.name", // TODO replace with SemConv constant
+		Key:         semconv.OtelLibraryName,
 		StringValue: instrumentationLib.Name,
 	}
 	instrumentationLibVersionAttr := &protoCommon.AttributeKeyValue{
 		Type:        protoCommon.AttributeKeyValue_STRING,
-		Key:         "otel.library.version", // TODO replace with SemConv constant
+		Key:         semconv.OtelLibraryVersion,
 		StringValue: instrumentationLib.Version,
 	}
 	return []*protoCommon.AttributeKeyValue{instrumentationLibNameAttr, instrumentationLibVersionAttr}
@@ -254,16 +255,15 @@ func getSerializedResourceForSpanExport(spanResource *resource.Resource) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	resource := protoResource.Resource{
+	res := protoResource.Resource{
 		Attributes: protoAttributes,
 	}
-	return proto.Marshal(&resource)
+	return proto.Marshal(&res)
 }
 
 func getExporterResource() *resource.Resource {
 	return resource.NewSchemaless(
-		// TODO get the attribute keys from the generated semantic conventions
-		attribute.Key("telemetry.exporter.name").String("odin"),
-		attribute.Key("telemetry.exporter.version").String(version.FullVersion),
+		attribute.Key(semconv.TelemetryExporterName).String("odin"),
+		attribute.Key(semconv.TelemetryExporterVersion).String(version.FullVersion),
 	)
 }
