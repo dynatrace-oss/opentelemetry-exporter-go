@@ -48,7 +48,6 @@ func logStartupBanner(config *configuration.DtConfiguration) {
 	logger.Infof("Span processing interval .... %d", config.SpanProcessingIntervalMs)
 	logger.Infof("Logging destination ......... %s", config.LoggingDestination)
 	logger.Infof("Logging flags ............... %s", config.LoggingFlags)
-	logger.Infof("Rum ClientIp Headers ........ %s", config.RumClientIpHeaders)
 	logger.Infof("Process ID .................. %d", os.Getpid())
 	logger.Infof("Command line is ............. %s", os.Args)
 
