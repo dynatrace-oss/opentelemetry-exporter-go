@@ -1,6 +1,6 @@
 # OpenTelemetry Go exporter for Dynatrace
 
-This is the home of the OpenTelemetry Go exporter for Dynatrace. This package allows you to export spans to Dynatrace
+This is the home of the OpenTelemetry Go trace exporter for Dynatrace. This package allows you to export spans to Dynatrace
 using the OpenTelemetry API.
 
 This package is provided as a "core package", meaning that no platform-specific span attributes are automatically
@@ -16,6 +16,8 @@ You need a Dynatrace environment to export your spans to.
 For platform-specific prerequisites, please refer to [Prerequisites](tbd).
 
 ## Getting started
+
+This README file just contains a very brief quickstart code sample. The main documentation of this package can be found in the [Dynatrace Documentation](tbd).
 
 Follow [the instructions](https://www.dynatrace.com/support/help/setup-and-configuration/setup-on-cloud-platforms/google-cloud-platform/opentelemetry-integration/opentelemetry-on-gcf#choose-config-method)
 on how to set up the Dynatrace configuration for your project by using a config file or environment variables. An error will be returned during the TracerProvider instantiation if the config cannot be found.
