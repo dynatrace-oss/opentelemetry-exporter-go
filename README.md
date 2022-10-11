@@ -12,15 +12,15 @@ Please refer to the [Dynatrace documentation](https://www.dynatrace.com/support/
 
 You need a Dynatrace environment to export your spans to.
 
-We currently only offer support and documentation for using this package on Google Cloud Functions (GCF). For GCF-specific prerequisites, please refer to [Prerequisites](https://www.dynatrace.com/support/help/setup-and-configuration/setup-on-cloud-platforms/google-cloud-platform/opentelemetry-integration/opentelemetry-on-gcf-go#prerequisites).
+This package is currently only supported in specific documented scenarios on Google Cloud Functions (GCF). For GCF-specific prerequisites, please refer to [Prerequisites](https://www.dynatrace.com/support/help/setup-and-configuration/setup-on-cloud-platforms/google-cloud-platform/opentelemetry-integration/opentelemetry-on-gcf-go#prerequisites).
 
 ## Getting started
 
 This README file just contains a very brief quickstart code sample. The main documentation of this package can be found in the [Dynatrace Documentation](https://www.dynatrace.com/support/help/setup-and-configuration/setup-on-cloud-platforms/google-cloud-platform/opentelemetry-integration/opentelemetry-on-gcf-go).
 
-Follow [the instructions](https://www.dynatrace.com/support/help/setup-and-configuration/setup-on-cloud-platforms/google-cloud-platform/opentelemetry-integration/opentelemetry-on-gcf#choose-config-method) on how to set up the Dynatrace configuration for your project by using a config file or environment variables. An error will be returned during the TracerProvider instantiation if the config cannot be found.
+Follow [the instructions](https://www.dynatrace.com/support/help/setup-and-configuration/setup-on-cloud-platforms/google-cloud-platform/opentelemetry-integration/opentelemetry-on-gcf#choose-config-method) on how to set up the Dynatrace configuration for your project by using a config file or environment variables. An error will be returned during the TracerProvider instantiation if the configuration cannot be found or is incomplete.
 
-1. Import the package into your Go project:
+1. Install the package into your Go project:
     ```shell
     go get github.com/dynatrace-oss/opentelemetry-exporter-go/core
     ```
@@ -54,16 +54,16 @@ Follow [the instructions](https://www.dynatrace.com/support/help/setup-and-confi
     ```go
     // otel.GetTracerProvider() will now return the DtTracerProvider that was created previously, it is safe to type-assert.
     tracerProvider := otel.GetTracerProvider().(*dtTrace.DtTracerProvider)
+   
+    // ensure the DtTracerProvider is properly shut down when you don't need it anymore.
+    // spans will be flushed, and after the deferred call executes, spans will no longer be processed or exported (even if started before)
+    defer tracerProvider.Shutdown(context.Background())
 
     // create a tracer and spans
     tracer := tracerProvider.Tracer("example tracer")
     ctx, span := tracer.Start(context.Background(), "example span")
     // do something between starting and ending the span
     span.End()
-
-    // ensure the DtTracerProvider is properly shut down when you are done creating spans
-    // spans will be flushed, and any spans created after this call will no longer be processed or exported 
-    tracerProvider.Shutdown(ctx)
     ```
 
 ## Support
