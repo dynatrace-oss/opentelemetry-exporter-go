@@ -73,6 +73,8 @@ Before creating a support ticket, please read through the [documentation](https:
 If you didn't find a solution there,
 please [contact Dynatrace support](https://www.dynatrace.com/support/contact-support/).
 
+There are no SLAs for GitHub tickets.
+
 ## License
 
 [Apache License Version 2.0](LICENSE)
