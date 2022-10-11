@@ -33,14 +33,14 @@ jobs:
           sh update_version.sh
           git add .
           git commit -m "Release $SPRINT_VERSION_WITH_PATCH"
-          git tag -a v$SPRINT_VERSION_WITH_PATCH -m "Release $SPRINT_VERSION_WITH_PATCH"
+          git tag -a core/v$SPRINT_VERSION_WITH_PATCH -m "Release $SPRINT_VERSION_WITH_PATCH"
           git push --follow-tags
 
-      # Update the Go modules index so that "go get github.com/dynatrace-oss/opentelemetry-exporter-go"
+      # Update the Go modules index so that "go get github.com/dynatrace-oss/opentelemetry-exporter-go/core"
       # will resolve to the latest tag.
-      # Users may install a specific version, e.g. "go get github.com/dynatrace-oss/opentelemetry-exporter-go@v1.245.2"
+      # Users may install a specific version, e.g. "go get github.com/dynatrace-oss/opentelemetry-exporter-go/core@v1.245.2"
       - uses: actions/setup-go@v3
       - name: Update Go modules index
         env:
           SPRINT_VERSION_WITH_PATCH: ${{ inputs.sprintVersion }}
-        run: GOPROXY=proxy.golang.org go list -m github.com/dynatrace-oss/opentelemetry-exporter-go@v$SPRINT_VERSION_WITH_PATCH
+        run: GOPROXY=proxy.golang.org go list -m github.com/dynatrace-oss/opentelemetry-exporter-go/core@v$SPRINT_VERSION_WITH_PATCH
