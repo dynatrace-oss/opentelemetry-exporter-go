@@ -30,24 +30,40 @@ Follow [the instructions](https://www.dynatrace.com/support/help/setup-and-confi
         "go.opentelemetry.io/otel"
         dtTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace"
     )
-   
-    // create a TracerProvider
-    tracerProvider, err := dtTrace.NewTracerProvider()
-    // optionally handle error
-    otel.SetTracerProvider(tracerProvider)
 
-    // create a TextMapPropagator
-    propagator, err := dtTrace.NewTextMapPropagator()
-    // optionally handle error
-    otel.SetTextMapPropagator(prop)
+    // call this once to initialize all required tracing components in your program
+    func initializeTracing() error {
+        // create a TracerProvider
+        tracerProvider, err := dtTrace.NewTracerProvider()
+        if err != nil {
+            // handle error as needed
+            return err
+        }
+        otel.SetTracerProvider(tracerProvider)
+
+        // create a TextMapPropagator
+        propagator, err := dtTrace.NewTextMapPropagator()
+        if err != nil {
+            // handle error as needed
+            return err
+        }
+        otel.SetTextMapPropagator(prop)
+    }
     ```
 3. Use the OpenTelemetry API as you normally would to create spans:
     ```go
-    // otel.GetTracerProvider() will now return the DtTracerProvider that was created previously.
-    tracer := otel.GetTracerProvider().Tracer("example tracer")
+    // otel.GetTracerProvider() will now return the DtTracerProvider that was created previously, it is safe to type-assert.
+    tracerProvider := otel.GetTracerProvider().(*dtTrace.DtTracerProvider)
+
+    // create a tracer and spans
+    tracer := tracerProvider.Tracer("example tracer")
     ctx, span := tracer.Start(context.Background(), "example span")
-    // do something
+    // do something between starting and ending the span
     span.End()
+
+    // ensure the DtTracerProvider is properly shut down when you are done creating spans
+    // spans will be flushed, and any spans created after this call will no longer be processed or exported 
+    tracerProvider.Shutdown(ctx)
     ```
 
 ## Support
