@@ -1,4 +1,4 @@
-name: Create release patch
+name: Create core module release patch
 
 on:
   # Allows you to run this workflow manually from the Actions tab
