@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
 )
 
 type debugLogFlags map[string]bool
@@ -84,6 +85,16 @@ func (p *dtLogger) log(kind logKind, component string, msg string) {
 type ComponentLogger struct {
 	componentName    string
 	debugFlagEnabled bool
+}
+
+func init() {
+	// We do not use the internalDtLogger for this since it might never be correctly configured.
+	// We ensure this line is always printed to stderr if a development version of the library is used.
+	if version.Version == "0.0.0" {
+		fmt.Fprintf(os.Stderr,
+			"[Dynatrace] This is a development version (%s) and not intended for use in production environments.\n",
+			version.FullVersion)
+	}
 }
 
 func NewComponentLogger(componentName string) *ComponentLogger {
