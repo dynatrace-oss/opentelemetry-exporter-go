@@ -43,6 +43,10 @@ const cSpansPath = "/odin/v1/spans"
 const cMaxSizeWarning = 1 * 1024 * 1024 // 1 MB
 const cMaxSizeSend = 64 * 1024 * 1024   // 64 MB
 
+// For connection resets, retry only if the send operation failed within this time
+// limit. Otherwise, we assume the backend is overloaded and do not retry.
+const cConnectionResetTimeLimit = 300 * time.Millisecond
+
 var errNotAuthorizedRequest = errors.New("Span Exporter is not authorized to send spans")
 
 type dtSpanExporter interface {
@@ -112,10 +116,18 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 		return err
 	}
 
+	exportStartTime := time.Now()
 	resp, err := e.performHttpRequest(req, t)
+	// Retry once if the connection was reset by the backend and the request took less than cConnectionResetTimeLimit.
+	if err == io.EOF && time.Since(exportStartTime) < cConnectionResetTimeLimit {
+		e.logger.Warnf("Got EOF during export, retrying once")
+		resp, err = e.performHttpRequest(req, t)
+	}
+
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
@@ -145,7 +157,7 @@ func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body io.Reader) (*h
 	return req, nil
 }
 
-func (e *dtSpanExporterImpl) performHttpRequest(req *http.Request, t exportType) (resp *http.Response, err error) {
+func (e *dtSpanExporterImpl) performHttpRequest(req *http.Request, t exportType) (*http.Response, error) {
 	if e.logger.DebugEnabled() {
 		// Authorization token must not be logged
 		reqCopy := req.Clone(context.Background())
@@ -162,7 +174,7 @@ func (e *dtSpanExporterImpl) performHttpRequest(req *http.Request, t exportType)
 	e.setTimeouts(t)
 
 	start := time.Now()
-	resp, err = e.client.Do(req)
+	resp, err := e.client.Do(req)
 	e.logger.Debugf("HTTP request took %s", time.Since(start))
 
 	if err != nil {
