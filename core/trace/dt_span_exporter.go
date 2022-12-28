@@ -110,20 +110,7 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 		e.logger.Warnf("Size of serialized spans reached %d bytes", serializedSpansLen)
 	}
 
-	body := bytes.NewBuffer(serializedSpans)
-	req, err := e.newRequest(ctx, body)
-	if err != nil {
-		return err
-	}
-
-	exportStartTime := time.Now()
-	resp, err := e.performHttpRequest(req, t)
-	// Retry once if the connection was reset by the backend and the request took less than cConnectionResetTimeLimit.
-	if err == io.EOF && time.Since(exportStartTime) < cConnectionResetTimeLimit {
-		e.logger.Warnf("Got EOF during export, retrying once")
-		resp, err = e.performHttpRequest(req, t)
-	}
-
+	resp, err := e.exportWithRetry(ctx, t, serializedSpans)
 	if err != nil {
 		return err
 	}
@@ -138,7 +125,42 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 		return errors.New("unexpected response code: " + strconv.Itoa(resp.StatusCode))
 	}
 
+	e.logger.Debug("Export successful")
 	return nil
+}
+
+func (e *dtSpanExporterImpl) exportWithRetry(ctx context.Context, t exportType, serializedSpans []byte) (*http.Response, error) {
+	req, err := e.createExportRequest(ctx, serializedSpans)
+	if err != nil {
+		return nil, err
+	}
+	exportStartTime := time.Now()
+	resp, err := e.performHttpRequest(req, t)
+	exportDuration := time.Since(exportStartTime)
+
+	// Retry once if the connection was reset by the backend and the request took less than cConnectionResetTimeLimit.
+	if errors.Is(err, io.EOF) {
+		if exportDuration < cConnectionResetTimeLimit {
+			e.logger.Warn("Got EOF during export, retrying once")
+			req, err := e.createExportRequest(ctx, serializedSpans)
+			if err != nil {
+				return nil, err
+			}
+			return e.performHttpRequest(req, t)
+		} else {
+			e.logger.Warnf("Got EOF during export, but request took too long (%v), not retrying", exportDuration)
+		}
+	}
+	return resp, err
+}
+
+func (e *dtSpanExporterImpl) createExportRequest(ctx context.Context, serializedSpans []byte) (*http.Request, error) {
+	body := bytes.NewBuffer(serializedSpans)
+	req, err := e.newRequest(ctx, body)
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
 }
 
 func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body io.Reader) (*http.Request, error) {
