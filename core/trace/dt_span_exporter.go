@@ -130,7 +130,8 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 }
 
 func (e *dtSpanExporterImpl) exportWithRetry(ctx context.Context, t exportType, serializedSpans []byte) (*http.Response, error) {
-	req, err := e.createExportRequest(ctx, serializedSpans)
+	reqBody := bytes.NewBuffer(serializedSpans)
+	req, err := e.newRequest(ctx, reqBody)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +143,8 @@ func (e *dtSpanExporterImpl) exportWithRetry(ctx context.Context, t exportType, 
 	if errors.Is(err, io.EOF) {
 		if exportDuration < cConnectionResetTimeLimit {
 			e.logger.Warn("Got EOF during export, retrying once")
-			req, err := e.createExportRequest(ctx, serializedSpans)
+			reqBody := bytes.NewBuffer(serializedSpans)
+			req, err := e.newRequest(ctx, reqBody)
 			if err != nil {
 				return nil, err
 			}
@@ -152,15 +154,6 @@ func (e *dtSpanExporterImpl) exportWithRetry(ctx context.Context, t exportType, 
 		}
 	}
 	return resp, err
-}
-
-func (e *dtSpanExporterImpl) createExportRequest(ctx context.Context, serializedSpans []byte) (*http.Request, error) {
-	body := bytes.NewBuffer(serializedSpans)
-	req, err := e.newRequest(ctx, body)
-	if err != nil {
-		return nil, err
-	}
-	return req, nil
 }
 
 func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body io.Reader) (*http.Request, error) {
