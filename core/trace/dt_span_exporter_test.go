@@ -45,7 +45,7 @@ func TestDtSpanExporterVerifyNewRequest(t *testing.T) {
 	}
 
 	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
-	req, err := exporter.newRequest(context.Background(), bytes.NewBuffer([]byte{1, 2, 3, 4, 5}))
+	req, err := exporter.newRequest(context.Background(), bytes.NewReader([]byte{1, 2, 3, 4, 5}))
 
 	require.NoError(t, err)
 	require.Equal(t, req.Method, "POST")
@@ -54,6 +54,7 @@ func TestDtSpanExporterVerifyNewRequest(t *testing.T) {
 	require.Equal(t, req.Header.Get("Authorization"), "Dynatrace testDtToken")
 	require.Equal(t, req.Header.Get("User-Agent"), fmt.Sprintf("odin-go/%s 0x000000000000000a testTenant", version.FullVersion))
 	require.Equal(t, req.Header.Get("Accept"), "*/*; q=0")
+	require.Equal(t, req.Header.Get("Idempotency-Key"), "")
 	require.EqualValues(t, req.ContentLength, 5)
 
 	body, err := ioutil.ReadAll(req.Body)
@@ -69,6 +70,7 @@ func TestDtSpanExporterPerformHTTPRequest(t *testing.T) {
 		require.Equal(t, req.Header.Get("Authorization"), "Dynatrace testDtToken")
 		require.Equal(t, req.Header.Get("User-Agent"), fmt.Sprintf("odin-go/%s 0x000000000000000a testDtTenant", version.FullVersion))
 		require.Equal(t, req.Header.Get("Accept"), "*/*; q=0")
+		require.Equal(t, req.Header.Get("Idempotency-Key"), "")
 		require.EqualValues(t, req.ContentLength, 3)
 
 		body, err := ioutil.ReadAll(req.Body)
@@ -92,7 +94,7 @@ func TestDtSpanExporterPerformHTTPRequest(t *testing.T) {
 	}
 
 	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
-	req, _ := exporter.newRequest(context.Background(), bytes.NewBuffer([]byte{10, 20, 30}))
+	req, _ := exporter.newRequest(context.Background(), bytes.NewReader([]byte{10, 20, 30}))
 	resp, err := exporter.performHttpRequest(req, exportTypePeriodic)
 	require.Equal(t, resp.StatusCode, http.StatusOK)
 	require.NoError(t, err)
@@ -121,7 +123,7 @@ func TestDtSpanExporterPerformHTTPRequestWithReachedFlushOperationTimeout(t *tes
 	}
 
 	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
-	req, _ := exporter.newRequest(context.Background(), bytes.NewBuffer([]byte{10, 20, 30}))
+	req, _ := exporter.newRequest(context.Background(), bytes.NewReader([]byte{10, 20, 30}))
 	resp, err := exporter.performHttpRequest(req, exportTypeForceFlush)
 	require.Nil(t, resp)
 	require.ErrorContains(t, err, "context deadline exceeded (Client.Timeout exceeded while awaiting headers")
