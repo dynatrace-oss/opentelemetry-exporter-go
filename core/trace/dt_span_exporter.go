@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -42,10 +43,6 @@ const cSpansPath = "/odin/v1/spans"
 
 const cMaxSizeWarning = 1 * 1024 * 1024 // 1 MB
 const cMaxSizeSend = 64 * 1024 * 1024   // 64 MB
-
-// For connection resets, retry only if the send operation failed within this time
-// limit. Otherwise, we assume the backend is overloaded and do not retry.
-const cConnectionResetTimeLimit = 300 * time.Millisecond
 
 var errNotAuthorizedRequest = errors.New("Span Exporter is not authorized to send spans")
 
@@ -110,20 +107,12 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 		e.logger.Warnf("Size of serialized spans reached %d bytes", serializedSpansLen)
 	}
 
-	body := bytes.NewBuffer(serializedSpans)
-	req, err := e.newRequest(ctx, body)
+	reqBody := bytes.NewReader(serializedSpans)
+	req, err := e.newRequest(ctx, reqBody)
 	if err != nil {
 		return err
 	}
-
-	exportStartTime := time.Now()
 	resp, err := e.performHttpRequest(req, t)
-	// Retry once if the connection was reset by the backend and the request took less than cConnectionResetTimeLimit.
-	if err == io.EOF && time.Since(exportStartTime) < cConnectionResetTimeLimit {
-		e.logger.Warnf("Got EOF during export, retrying once")
-		resp, err = e.performHttpRequest(req, t)
-	}
-
 	if err != nil {
 		return err
 	}
@@ -141,7 +130,7 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	return nil
 }
 
-func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body io.Reader) (*http.Request, error) {
+func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body *bytes.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, "POST", e.config.BaseUrl+cSpansPath, body)
 	if err != nil {
 		e.logger.Errorf("Can not create HTTP request: %s", err)
@@ -153,6 +142,18 @@ func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body io.Reader) (*h
 	req.Header.Set("User-Agent", fmt.Sprintf("odin-go/%s %#016x %s",
 		version.FullVersion, e.config.AgentId, e.config.Tenant))
 	req.Header.Set("Accept", "*/*; q=0")
+	// Setting just the header Idempotency-Key with an empty value ensures that the request is
+	// treated as idempotent but the header is not sent over the wire. See net/http/transport.go
+	req.Header.Set("Idempotency-Key", "")
+
+	// GetBody must be set to allow for automatic retries. See net/http/transport.go
+	req.GetBody = func() (io.ReadCloser, error) {
+		_, err := body.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+		return ioutil.NopCloser(body), nil
+	}
 
 	return req, nil
 }
