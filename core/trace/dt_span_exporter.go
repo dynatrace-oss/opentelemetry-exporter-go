@@ -19,8 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -144,16 +142,8 @@ func (e *dtSpanExporterImpl) newRequest(ctx context.Context, body *bytes.Reader)
 	req.Header.Set("Accept", "*/*; q=0")
 	// Setting just the header Idempotency-Key with an empty value ensures that the request is
 	// treated as idempotent but the header is not sent over the wire. See net/http/transport.go
+	// req.GetBody must also be set. It is set automatically by http.NewRequestWithContext since the body is of type *bytes.Reader.
 	req.Header.Set("Idempotency-Key", "")
-
-	// GetBody must be set to allow for automatic retries. See net/http/transport.go
-	req.GetBody = func() (io.ReadCloser, error) {
-		_, err := body.Seek(0, io.SeekStart)
-		if err != nil {
-			return nil, err
-		}
-		return ioutil.NopCloser(body), nil
-	}
 
 	return req, nil
 }
