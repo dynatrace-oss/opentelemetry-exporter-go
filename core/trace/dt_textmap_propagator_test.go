@@ -418,7 +418,7 @@ func TestPropagatorExtractOnlyTraceparent(t *testing.T) {
 	require.Equal(t, spanCtx.TraceID().String(), "11223344556677889900112233445566")
 	require.Equal(t, spanCtx.SpanID().String(), "8877665544332211")
 	require.True(t, spanCtx.IsRemote())
-	require.False(t, spanCtx.TraceFlags().IsSampled())
+	require.True(t, spanCtx.IsSampled())
 	// 'custom' tracestate entry remains since traceId is matching
 	require.Empty(t, spanCtx.TraceState())
 
@@ -633,7 +633,7 @@ func TestPropagatorIgnoreNonSampledFlagFromSpanContext(t *testing.T) {
 	require.NotNil(t, span)
 
 	// traceparent non-sampling decision must be ignored, thus span must be sampled based on FW4 tag
-	require.True(t, span.SpanContext().TraceFlags().IsSampled())
+	require.True(t, span.SpanContext().IsSampled())
 
 	tag := fw4.Fw4TagFromContext(ctx)
 	require.NotNil(t, tag)
@@ -655,11 +655,28 @@ func TestPropagatorIgnoreSampledFlagFromSpanContext(t *testing.T) {
 	require.NotNil(t, span)
 
 	// traceparent sampling decision must be ignored, thus span must be non-sampled based on FW4 tag
-	require.False(t, span.SpanContext().TraceFlags().IsSampled())
+	require.False(t, span.SpanContext().IsSampled())
 
 	tag := fw4.Fw4TagFromContext(ctx)
 	require.NotNil(t, tag)
 	require.True(t, tag.IsIgnored())
+}
+
+func TestPropagatorShouldSampleIfNoTagPresent(t *testing.T) {
+	p, err := NewTextMapPropagator()
+	require.NotNil(t, p)
+	require.NoError(t, err)
+
+	c := propagation.HeaderCarrier{}
+	// This traceparent header has the sampling bit set to 0
+	c.Set(traceparentHeader, "00-11223344556677889900112233445566-8877665544332211-00")
+
+	ctx := p.Extract(context.Background(), c)
+
+	// The span should be sampled because we do not respect the sampling flag from traceparent
+	span := trace.SpanFromContext(ctx)
+	require.NotNil(t, span)
+	require.True(t, span.SpanContext().IsSampled())
 }
 
 func newTestDtSpan(spanConfig trace.SpanContextConfig, dtConfig *configuration.DtConfiguration) (context.Context, *dtSpan) {
