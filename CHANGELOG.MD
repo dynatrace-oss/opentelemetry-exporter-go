@@ -1,3 +1,9 @@
+## 1.267.1 (2023-05-11)
+
+### Fixes
+
+* Ensure that remote span contexts are always sampled, unless an FW4Tag exists which explicitly has the ignored flag.
+
 ## 1.259.1 (2023-02-15)
 
 ### Features
