@@ -148,7 +148,7 @@ func TestFw4UpdateTraceFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	spanCtx := trace.NewSpanContext(config)
-	updatedSpanCtx := UpdateTraceFlags(spanCtx, tag)
+	updatedSpanCtx := UpdateTraceFlags(spanCtx, &tag)
 
 	require.False(t, spanCtx.IsSampled())
 	require.True(t, updatedSpanCtx.IsSampled())

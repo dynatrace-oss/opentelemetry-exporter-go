@@ -16,6 +16,7 @@ package trace
 
 import (
 	"context"
+
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
@@ -142,6 +143,11 @@ func (p *DtTextMapPropagator) Extract(parentCtx context.Context, carrier propaga
 	}
 
 	// FW4 tag is found neither in x-dynatrace nor in tracestate, so return remote context without FW4 tag
+	if remoteSpanCtx.IsValid() {
+		// Ensure that we update the trace flags of the remote span context, even if no tag is present.
+		updatedSpanCtx := fw4.UpdateTraceFlags(remoteSpanCtx, nil)
+		return trace.ContextWithRemoteSpanContext(parentCtx, updatedSpanCtx)
+	}
 	return remoteContext
 }
 
@@ -151,7 +157,7 @@ func (p *DtTextMapPropagator) Fields() []string {
 
 func contextWithFw4TagAndUpdatedSpanContext(ctx context.Context, spanCtx trace.SpanContext, tag fw4.Fw4Tag) context.Context {
 	spanCtx = fw4.UpdateTracestate(spanCtx, tag)
-	spanCtx = fw4.UpdateTraceFlags(spanCtx, tag)
+	spanCtx = fw4.UpdateTraceFlags(spanCtx, &tag)
 	ctx = trace.ContextWithRemoteSpanContext(ctx, spanCtx)
 
 	return fw4.ContextWithFw4Tag(ctx, &tag)

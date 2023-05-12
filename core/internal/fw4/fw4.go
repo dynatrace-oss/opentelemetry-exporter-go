@@ -236,11 +236,16 @@ func UpdateTracestate(ctx trace.SpanContext, tag Fw4Tag) trace.SpanContext {
 	return ctx.WithTraceState(ts)
 }
 
-func UpdateTraceFlags(ctx trace.SpanContext, tag Fw4Tag) trace.SpanContext {
-	var flag trace.TraceFlags
-	if !tag.IsIgnored() {
-		flag = trace.FlagsSampled
+func UpdateTraceFlags(ctx trace.SpanContext, tag *Fw4Tag) trace.SpanContext {
+	// Override sampled bit with the one from the tag
+	// If no tag exists, we always set the sampled bit.
+	flags := ctx.TraceFlags()
+
+	if tag != nil && tag.IsIgnored() {
+		flags &= ^trace.FlagsSampled
+	} else {
+		flags |= trace.FlagsSampled
 	}
 
-	return ctx.WithTraceFlags(flag)
+	return ctx.WithTraceFlags(flags)
 }
