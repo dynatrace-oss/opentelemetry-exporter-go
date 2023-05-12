@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration/internal/util"
 )
@@ -170,5 +171,6 @@ func validateConfiguration(config *DtConfiguration) error {
 }
 
 func generateAgentId() int64 {
-	return int64(rand.Uint64())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return int64(rng.Uint64())
 }

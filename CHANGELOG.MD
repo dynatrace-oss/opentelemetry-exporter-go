@@ -3,6 +3,7 @@
 ### Fixes
 
 * Ensure that remote span contexts are always sampled, unless an FW4Tag exists which explicitly has the ignored flag.
+* Agent ID generation now uses a properly seeded random number generator.
 
 ## 1.259.1 (2023-02-15)
 
