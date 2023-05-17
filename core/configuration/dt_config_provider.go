@@ -15,6 +15,8 @@
 package configuration
 
 import (
+	cryptoRand "crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -171,6 +173,15 @@ func validateConfiguration(config *DtConfiguration) error {
 }
 
 func generateAgentId() int64 {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var rng *rand.Rand
+
+	var seed [8]byte
+	_, err := cryptoRand.Read(seed[:])
+	if err != nil {
+		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	} else {
+		rng = rand.New(rand.NewSource(int64(binary.LittleEndian.Uint64(seed[:]))))
+	}
+
 	return int64(rng.Uint64())
 }
