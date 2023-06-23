@@ -34,7 +34,9 @@ import (
 func serializeSpans(
 	spans dtSpanSet,
 	tenantUUID string,
-	agentId int64) ([]byte, error) {
+	agentId int64,
+	tenantId,
+	clusterId int32) ([]byte, error) {
 
 	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
 
@@ -42,7 +44,7 @@ func serializeSpans(
 		fw4Tag := span.metadata.fw4Tag
 		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
 
-		spanMsg, err := createProtoSpan(span, customTag)
+		spanMsg, err := createProtoSpan(span, customTag, tenantId, clusterId)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +95,7 @@ func getFirstResource(spans dtSpanSet) (*resource.Resource, error) {
 	return nil, errors.New("span set is empty, can't retrieve resource")
 }
 
-func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*protoTrace.Span, error) {
+func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag, tenantId, clusterId int32) (*protoTrace.Span, error) {
 	if dtSpan == nil {
 		return nil, errors.New("cannot create proto span from nil dtSpan")
 	}
@@ -136,6 +138,8 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 			spanMsg.CustomTag = incomingCustomTag
 		}
 
+		encodedLinkId := spanMetadata.fw4Tag.EncodedLinkID()
+		spanMsg.ParentFwtagEncodedLinkId = &encodedLinkId
 		spanMsg.Name = span.Name()
 		spanMsg.Kind = getProtoSpanKind(span.SpanKind())
 		spanMsg.StartTimeUnixnano = uint64(span.StartTime().UnixNano())
@@ -158,7 +162,7 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 		}
 		spanMsg.Events = protoEvents
 
-		protoLinks, err := getProtoLinks(span.Links())
+		protoLinks, err := getProtoLinks(span.Links(), tenantId, clusterId)
 		if err != nil {
 			return nil, err
 		}

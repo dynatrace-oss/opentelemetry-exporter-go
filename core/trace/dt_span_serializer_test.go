@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/resource"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
@@ -30,7 +30,7 @@ import (
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
-	protoSpan, err := createProtoSpan(nil, nil)
+	protoSpan, err := createProtoSpan(nil, nil, 0, 0)
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -44,7 +44,7 @@ func TestCreateProtoSpan_NonReadOnlySpan(t *testing.T) {
 		Span:     span,
 		metadata: newDtSpanMetadata(123),
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil)
+	protoSpan, err := createProtoSpan(dtSpan, nil, 0, 0)
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -57,7 +57,7 @@ func TestCreateProtoSpan_NoMetadata(t *testing.T) {
 		Span:     span,
 		metadata: nil,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil)
+	protoSpan, err := createProtoSpan(dtSpan, nil, 0, 0)
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -76,7 +76,7 @@ func TestCreateProtoSpan(t *testing.T) {
 		Type:      protoTrace.CustomTag_Generic,
 		Direction: protoTrace.CustomTag_Incoming,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, customTag)
+	protoSpan, err := createProtoSpan(dtSpan, customTag, 0, 0)
 	require.NoError(t, err)
 	require.NotNil(t, protoSpan)
 	require.NotNil(t, protoSpan.GetTraceId())
@@ -109,7 +109,7 @@ func TestGetFirstResource_FailsIfSetEmpty(t *testing.T) {
 }
 
 func TestGetResourceForSpanExport(t *testing.T) {
-	spanResource := resource.NewSchemaless(attribute.String("key", "value"))
+	spanResource := sdkresource.NewSchemaless(attribute.String("key", "value"))
 
 	exportResource, err := getResourceForSpanExport(spanResource)
 	require.NoError(t, err)
@@ -137,7 +137,7 @@ func TestGetResourceForSpanExport(t *testing.T) {
 }
 
 func TestGetResourceForSpanExport_SpanResourceTakesPrecedence(t *testing.T) {
-	spanResource := resource.NewSchemaless(
+	spanResource := sdkresource.NewSchemaless(
 		attribute.String("key", "value"),
 		attribute.String("telemetry.sdk.language", "test_sdk_language"),
 	)
@@ -278,7 +278,7 @@ func TestGetProtoLinks(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links)
+	protoLinks, err := getProtoLinks(links, 0, 0)
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 
