@@ -16,16 +16,19 @@ package trace
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
@@ -292,5 +295,81 @@ func TestGetProtoLinks(t *testing.T) {
 		require.EqualValues(t, protoLink.GetAttributes()[0].GetKey(), links[i].Attributes[0].Key)
 		require.Equal(t, protoLink.GetAttributes()[0].GetStringValue(), links[i].Attributes[0].Value.AsString())
 		require.EqualValues(t, protoLink.GetDroppedAttributesCount(), links[i].DroppedAttributeCount)
+	}
+}
+
+func TestLinkIdExportedForRemoteLinks(t *testing.T) {
+	propagator, _ := NewTextMapPropagator()
+	tenantId := propagator.config.TenantId()
+	clusterId := propagator.config.ClusterId
+	tsKey := fw4.TraceStateKey(tenantId, clusterId)
+
+	remoteEncodedLinkId := int32(0x180000AB) // sampling-exp (3) | link-id (171)
+	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
+		"traceparent": "00-11223344556677889900112233445566-aabbccddeeffaabb-01",
+		"tracestate":  fmt.Sprintf("%s=fw4;fffffffd;0;0;ab;0;3;0", tsKey),
+	})
+
+	links := []sdktrace.Link{
+		{
+			SpanContext: trace.SpanContextFromContext(parentCtx),
+		},
+	}
+
+	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: tenantId, ClusterId: clusterId})
+	require.NoError(t, err)
+	require.Len(t, protoLinks, len(links))
+
+	for _, protoLink := range protoLinks {
+		require.NotNil(t, protoLink.FwtagEncodedLinkId)
+		require.Equal(t, *protoLink.FwtagEncodedLinkId, remoteEncodedLinkId)
+	}
+}
+
+func TestLinkIdExportedForSpanWithRemoteParentInXDtc(t *testing.T) {
+	propagator, _ := NewTextMapPropagator()
+	tenantId := propagator.config.TenantId()
+	clusterId := propagator.config.ClusterId
+
+	remoteEncodedLinkId := int32(0x180000AB) // sampling-exp (3) | link-id (171)
+	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
+		"traceparent": "00-11223344556677889900112233445566-aabbccddeeffaabb-01",
+		"x-dynatrace": fmt.Sprintf("FW4;%v;42;0;0;%v;%v;0;82fe;6h11223344556677889900aabbccddeeff;7h1234567890abcdef",
+			clusterId, remoteEncodedLinkId, tenantId),
+	})
+
+	links := []sdktrace.Link{
+		{
+			SpanContext: trace.SpanContextFromContext(parentCtx),
+		},
+	}
+
+	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: tenantId, ClusterId: clusterId})
+	require.NoError(t, err)
+	require.Len(t, protoLinks, len(links))
+
+	for _, protoLink := range protoLinks {
+		require.NotNil(t, protoLink.FwtagEncodedLinkId)
+		require.Equal(t, *protoLink.FwtagEncodedLinkId, remoteEncodedLinkId)
+	}
+}
+
+func TestLinksWithoutFw4TagGetNoLinkId(t *testing.T) {
+	links := []sdktrace.Link{
+		{
+			SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
+				TraceID:    trace.TraceID{1, 2, 3, 4, 5, 6, 7, 8},
+				SpanID:     trace.SpanID{1, 2, 3, 4, 5, 6, 7, 8},
+				TraceFlags: 0,
+			}),
+		},
+	}
+
+	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	require.NoError(t, err)
+	require.Len(t, protoLinks, len(links))
+
+	for _, protoLink := range protoLinks {
+		require.Nil(t, protoLink.FwtagEncodedLinkId)
 	}
 }

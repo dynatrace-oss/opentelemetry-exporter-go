@@ -180,10 +180,13 @@ func getProtoLinks(links []sdktrace.Link, qualifiedTenantId util.QualifiedTenant
 		}
 
 		if spanContext.IsRemote() {
-			if fw4Tag, err := fw4.GetMatchingFw4FromTracestate(spanContext.TraceState(), qualifiedTenantId.TenantId, qualifiedTenantId.ClusterId); err != nil {
-				encodedLinkID := fw4Tag.EncodedLinkID()
-				protoLink.FwtagEncodedLinkId = &encodedLinkID
+			fw4Tag, err := fw4.GetMatchingFw4FromTracestate(spanContext.TraceState(), qualifiedTenantId.TenantId, qualifiedTenantId.ClusterId)
+			if err != nil {
+				return nil, err
 			}
+
+			encodedLinkID := fw4Tag.EncodedLinkID()
+			protoLink.FwtagEncodedLinkId = &encodedLinkID
 		}
 
 		protoLinks = append(protoLinks, protoLink)
