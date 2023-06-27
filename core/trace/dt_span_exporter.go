@@ -28,6 +28,7 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 )
 
 type exportType int
@@ -89,7 +90,8 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	start := time.Now()
 	// TODO: In order to support large amounts of spans, implement a splitting algorithm
 	// so that we can send spans in batches whose sizes do not exceed cMaxSizeSend.
-	serializedSpans, err := serializeSpans(spans, e.config.Tenant, e.config.AgentId, e.config.TenantId(), e.config.ClusterId)
+	ids := util.QualifiedTenantId{TenantId: e.config.TenantId(), ClusterId: e.config.ClusterId}
+	serializedSpans, err := serializeSpans(spans, e.config.Tenant, e.config.AgentId, ids)
 	if err != nil {
 		return err
 	}

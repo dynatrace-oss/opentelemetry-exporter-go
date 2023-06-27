@@ -25,6 +25,7 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 )
 
 func getProtoSendReason(sendState sendState) (protoTrace.Span_SendReason, error) {
@@ -160,7 +161,7 @@ func getProtoEvents(events []sdktrace.Event) ([]*protoTrace.Span_Event, error) {
 	return protoEvents, nil
 }
 
-func getProtoLinks(links []sdktrace.Link, tenantId, clusterId int32) ([]*protoTrace.Span_Link, error) {
+func getProtoLinks(links []sdktrace.Link, qualifiedTenantId util.QualifiedTenantId) ([]*protoTrace.Span_Link, error) {
 	protoLinks := make([]*protoTrace.Span_Link, 0, len(links))
 	for _, link := range links {
 		spanContext := link.SpanContext
@@ -179,7 +180,7 @@ func getProtoLinks(links []sdktrace.Link, tenantId, clusterId int32) ([]*protoTr
 		}
 
 		if spanContext.IsRemote() {
-			if fw4Tag, err := fw4.GetMatchingFw4FromTracestate(spanContext.TraceState(), tenantId, clusterId); err != nil {
+			if fw4Tag, err := fw4.GetMatchingFw4FromTracestate(spanContext.TraceState(), qualifiedTenantId.TenantId, qualifiedTenantId.ClusterId); err != nil {
 				encodedLinkID := fw4Tag.EncodedLinkID()
 				protoLink.FwtagEncodedLinkId = &encodedLinkID
 			}
