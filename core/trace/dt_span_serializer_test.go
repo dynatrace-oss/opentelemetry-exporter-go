@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
@@ -30,7 +31,7 @@ import (
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
-	protoSpan, err := createProtoSpan(nil, nil, 0, 0)
+	protoSpan, err := createProtoSpan(nil, nil, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -44,7 +45,7 @@ func TestCreateProtoSpan_NonReadOnlySpan(t *testing.T) {
 		Span:     span,
 		metadata: newDtSpanMetadata(123),
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil, 0, 0)
+	protoSpan, err := createProtoSpan(dtSpan, nil, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -57,7 +58,7 @@ func TestCreateProtoSpan_NoMetadata(t *testing.T) {
 		Span:     span,
 		metadata: nil,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil, 0, 0)
+	protoSpan, err := createProtoSpan(dtSpan, nil, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -76,7 +77,7 @@ func TestCreateProtoSpan(t *testing.T) {
 		Type:      protoTrace.CustomTag_Generic,
 		Direction: protoTrace.CustomTag_Incoming,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, customTag, 0, 0)
+	protoSpan, err := createProtoSpan(dtSpan, customTag, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.NotNil(t, protoSpan)
 	require.NotNil(t, protoSpan.GetTraceId())
@@ -278,7 +279,7 @@ func TestGetProtoLinks(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links, 0, 0)
+	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 
