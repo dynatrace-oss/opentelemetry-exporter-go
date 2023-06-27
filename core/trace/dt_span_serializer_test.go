@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
@@ -28,13 +27,14 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
-	protoSpan, err := createProtoSpan(nil, nil, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	protoSpan, err := createProtoSpan(nil, nil, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -48,7 +48,7 @@ func TestCreateProtoSpan_NonReadOnlySpan(t *testing.T) {
 		Span:     span,
 		metadata: newDtSpanMetadata(123),
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	protoSpan, err := createProtoSpan(dtSpan, nil, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -61,7 +61,7 @@ func TestCreateProtoSpan_NoMetadata(t *testing.T) {
 		Span:     span,
 		metadata: nil,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	protoSpan, err := createProtoSpan(dtSpan, nil, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -80,7 +80,7 @@ func TestCreateProtoSpan(t *testing.T) {
 		Type:      protoTrace.CustomTag_Generic,
 		Direction: protoTrace.CustomTag_Incoming,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, customTag, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	protoSpan, err := createProtoSpan(dtSpan, customTag, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.NotNil(t, protoSpan)
 	require.NotNil(t, protoSpan.GetTraceId())
@@ -282,7 +282,7 @@ func TestGetProtoLinks(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	protoLinks, err := getProtoLinks(links, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 
@@ -300,9 +300,8 @@ func TestGetProtoLinks(t *testing.T) {
 
 func TestLinkIdExportedForRemoteLinks(t *testing.T) {
 	propagator, _ := NewTextMapPropagator()
-	tenantId := propagator.config.TenantId()
-	clusterId := propagator.config.ClusterId
-	tsKey := fw4.TraceStateKey(tenantId, clusterId)
+	ids := configuration.QualifiedTenantId{TenantId: propagator.config.TenantId(), ClusterId: propagator.config.ClusterId}
+	tsKey := fw4.TraceStateKey(ids)
 
 	remoteEncodedLinkId := int32(0x180000AB) // sampling-exp (3) | link-id (171)
 	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
@@ -316,7 +315,7 @@ func TestLinkIdExportedForRemoteLinks(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: tenantId, ClusterId: clusterId})
+	protoLinks, err := getProtoLinks(links, ids)
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 
@@ -344,7 +343,7 @@ func TestLinkIdExportedForSpanWithRemoteParentInXDtc(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: tenantId, ClusterId: clusterId})
+	protoLinks, err := getProtoLinks(links, configuration.QualifiedTenantId{TenantId: tenantId, ClusterId: clusterId})
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 
@@ -365,7 +364,7 @@ func TestLinksWithoutFw4TagGetNoLinkId(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links, util.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	protoLinks, err := getProtoLinks(links, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 

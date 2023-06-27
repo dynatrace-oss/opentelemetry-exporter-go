@@ -22,6 +22,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	protoCollectorCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/common/v1"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
@@ -29,14 +30,13 @@ import (
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/semconv"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
-	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 )
 
 func serializeSpans(
 	spans dtSpanSet,
 	tenantUUID string,
 	agentId int64,
-	qualifiedTenantId util.QualifiedTenantId) ([]byte, error) {
+	qualifiedTenantId configuration.QualifiedTenantId) ([]byte, error) {
 
 	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
 
@@ -95,7 +95,7 @@ func getFirstResource(spans dtSpanSet) (*resource.Resource, error) {
 	return nil, errors.New("span set is empty, can't retrieve resource")
 }
 
-func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag, qualifiedTenantId util.QualifiedTenantId) (*protoTrace.Span, error) {
+func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag, qualifiedTenantId configuration.QualifiedTenantId) (*protoTrace.Span, error) {
 	if dtSpan == nil {
 		return nil, errors.New("cannot create proto span from nil dtSpan")
 	}

@@ -68,6 +68,13 @@ func (config *DtConfiguration) TenantId() int32 {
 	return config.tenantId
 }
 
+func (config *DtConfiguration) QualifiedTenantId() QualifiedTenantId {
+	return QualifiedTenantId{
+		TenantId:  config.tenantId,
+		ClusterId: config.ClusterId,
+	}
+}
+
 // ConfigurationProvider
 // Usage: create an instance of ConfigurationProvider and call GetConfiguration() to get the configuration.
 // You may pass around the ConfigurationProvider or the returned DtConfiguration to other parts of the application.

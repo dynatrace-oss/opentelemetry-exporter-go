@@ -24,6 +24,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 )
 
@@ -364,14 +365,14 @@ func encodeExtensions(fw4 Fw4Tag, fw4Sb *strings.Builder) {
 }
 
 func (fw4 Fw4Tag) TraceStateKey() string {
-	return TraceStateKey(fw4.TenantID, fw4.ClusterID)
+	return TraceStateKey(configuration.QualifiedTenantId{TenantId: fw4.TenantID, ClusterId: fw4.ClusterID})
 }
 
-func TraceStateKey(tenantId, clusterId int32) string {
-	return fmt.Sprintf("%x-%x@dt", uint32(tenantId), uint32(clusterId))
+func TraceStateKey(qualifiedTenantId configuration.QualifiedTenantId) string {
+	return fmt.Sprintf("%x-%x@dt", uint32(qualifiedTenantId.TenantId), uint32(qualifiedTenantId.ClusterId))
 }
 
-func GetMatchingFw4FromXDynatrace(xDt string, tenantId, clusterId int32) (Fw4Tag, error) {
+func GetMatchingFw4FromXDynatrace(xDt string, qualifiedTenantId configuration.QualifiedTenantId) (Fw4Tag, error) {
 	tag, err := ParseXDynatrace(xDt)
 	if err != nil {
 		return tag, err
@@ -385,19 +386,19 @@ func GetMatchingFw4FromXDynatrace(xDt string, tenantId, clusterId int32) (Fw4Tag
 		return EmptyTag(), errors.New("FW4 tag does not contain SpanId")
 	}
 
-	if tag.ClusterID != clusterId {
+	if tag.ClusterID != qualifiedTenantId.ClusterId {
 		return EmptyTag(), errors.New("FW4 ClusterId mismatch")
 	}
 
-	if tag.TenantID != tenantId {
+	if tag.TenantID != qualifiedTenantId.TenantId {
 		return EmptyTag(), errors.New("FW4 TenantId mismatch")
 	}
 
 	return tag, nil
 }
 
-func GetMatchingFw4FromTracestate(ts trace.TraceState, tenantId, clusterId int32) (Fw4Tag, error) {
-	tsKey := TraceStateKey(tenantId, clusterId)
+func GetMatchingFw4FromTracestate(ts trace.TraceState, qualifiedTenantId configuration.QualifiedTenantId) (Fw4Tag, error) {
+	tsKey := TraceStateKey(qualifiedTenantId)
 	tsEntry := ts.Get(tsKey)
 	if len(tsEntry) == 0 {
 		return EmptyTag(), errNoDtTracestateEntry
@@ -409,8 +410,8 @@ func GetMatchingFw4FromTracestate(ts trace.TraceState, tenantId, clusterId int32
 	}
 
 	// parsed tracestate entry itself does not contain tenant and cluster ids, so update them accordingly
-	tag.TenantID = tenantId
-	tag.ClusterID = clusterId
+	tag.TenantID = qualifiedTenantId.TenantId
+	tag.ClusterID = qualifiedTenantId.ClusterId
 
 	return tag, nil
 }
