@@ -85,6 +85,10 @@ func (fw4 Fw4Tag) HasTagDepth() bool {
 	return fw4.tagDepth > 0
 }
 
+func (fw4 Fw4Tag) EncodedLinkID() int32 {
+	return int32(fw4.encodedLinkID)
+}
+
 func (fw4 Fw4Tag) LinkID() int32 {
 	return int32(fw4.encodedLinkID & linkIdMask)
 }

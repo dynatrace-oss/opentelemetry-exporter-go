@@ -17,11 +17,13 @@ package trace
 import (
 	"fmt"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
@@ -159,21 +161,34 @@ func getProtoEvents(events []sdktrace.Event) ([]*protoTrace.Span_Event, error) {
 	return protoEvents, nil
 }
 
-func getProtoLinks(links []sdktrace.Link) ([]*protoTrace.Span_Link, error) {
+func getProtoLinks(links []sdktrace.Link, qualifiedTenantId configuration.QualifiedTenantId) ([]*protoTrace.Span_Link, error) {
 	protoLinks := make([]*protoTrace.Span_Link, 0, len(links))
 	for _, link := range links {
-		traceId := link.SpanContext.TraceID()
-		spanId := link.SpanContext.SpanID()
+		spanContext := link.SpanContext
+		traceId := spanContext.TraceID()
+		spanId := spanContext.SpanID()
 		protoAttributes, err := getProtoAttributes(link.Attributes)
 		if err != nil {
 			return nil, err
 		}
+
 		protoLink := &protoTrace.Span_Link{
 			TraceId:                traceId[:],
 			SpanId:                 spanId[:],
 			Attributes:             protoAttributes,
 			DroppedAttributesCount: uint32(link.DroppedAttributeCount),
 		}
+
+		if spanContext.IsRemote() {
+			fw4Tag, err := fw4.GetMatchingFw4FromTracestate(spanContext.TraceState(), qualifiedTenantId)
+			if err != nil {
+				return nil, err
+			}
+
+			encodedLinkID := fw4Tag.EncodedLinkID()
+			protoLink.FwtagEncodedLinkId = &encodedLinkID
+		}
+
 		protoLinks = append(protoLinks, protoLink)
 	}
 	return protoLinks, nil

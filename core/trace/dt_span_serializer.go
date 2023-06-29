@@ -22,6 +22,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	protoCollectorCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/common/v1"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
@@ -34,7 +35,8 @@ import (
 func serializeSpans(
 	spans dtSpanSet,
 	tenantUUID string,
-	agentId int64) ([]byte, error) {
+	agentId int64,
+	qualifiedTenantId configuration.QualifiedTenantId) ([]byte, error) {
 
 	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
 
@@ -42,7 +44,7 @@ func serializeSpans(
 		fw4Tag := span.metadata.fw4Tag
 		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
 
-		spanMsg, err := createProtoSpan(span, customTag)
+		spanMsg, err := createProtoSpan(span, customTag, qualifiedTenantId)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +95,7 @@ func getFirstResource(spans dtSpanSet) (*resource.Resource, error) {
 	return nil, errors.New("span set is empty, can't retrieve resource")
 }
 
-func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*protoTrace.Span, error) {
+func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag, qualifiedTenantId configuration.QualifiedTenantId) (*protoTrace.Span, error) {
 	if dtSpan == nil {
 		return nil, errors.New("cannot create proto span from nil dtSpan")
 	}
@@ -131,6 +133,12 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 			// This is not a root span and has a parent
 			parentSpanId := parentSpanCtx.SpanID()
 			spanMsg.ParentSpanId = parentSpanId[:]
+
+			if parentSpanCtx.IsRemote() {
+				encodedLinkId := spanMetadata.fw4Tag.EncodedLinkID()
+				spanMsg.ParentFwtagEncodedLinkId = &encodedLinkId
+			}
+
 		} else {
 			// This is a root span
 			spanMsg.CustomTag = incomingCustomTag
@@ -158,7 +166,7 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag) (*
 		}
 		spanMsg.Events = protoEvents
 
-		protoLinks, err := getProtoLinks(span.Links())
+		protoLinks, err := getProtoLinks(span.Links(), qualifiedTenantId)
 		if err != nil {
 			return nil, err
 		}

@@ -20,6 +20,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 )
 
 type unparsableInputTestCase struct {
@@ -80,10 +82,10 @@ type inputMismatchingXDynatraceTestCase struct {
 	errmsg    string
 }
 
-func runMismatchingXDynatraceTests(t *testing.T, parser func(string, int32, int32) (Fw4Tag, error), testCases []inputMismatchingXDynatraceTestCase) {
+func runMismatchingXDynatraceTests(t *testing.T, parser func(string, configuration.QualifiedTenantId) (Fw4Tag, error), testCases []inputMismatchingXDynatraceTestCase) {
 	for _, tc := range testCases {
 		t.Run(tc.tag, func(t *testing.T) {
-			parsed, err := parser(tc.tag, tc.tenantId, tc.clusterId)
+			parsed, err := parser(tc.tag, configuration.QualifiedTenantId{TenantId: tc.tenantId, ClusterId: tc.clusterId})
 			if err == nil {
 				t.Fatalf("Unexpectedly succeeded parsing %q tag with expected tenantId: %d, clusterId: %d, (result=%v)", tc.tag,
 					tc.tenantId, tc.clusterId, parsed)
@@ -111,7 +113,7 @@ func TestGetFw4TagFromTracestateWithMismatchingTenantId(t *testing.T) {
 	ts, err := ts.Insert("11-81@dt", "fw4;1;ec354cd6;1;2;0;0;3039;4589;1h48656c6c6f2c20576f726c6421;2h0123")
 	require.NoError(t, err)
 
-	tag, err := GetMatchingFw4FromTracestate(ts, 0, 129)
+	tag, err := GetMatchingFw4FromTracestate(ts, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 129})
 	require.Equal(t, err, errNoDtTracestateEntry)
 	require.Equal(t, tag, EmptyTag())
 }
@@ -121,7 +123,7 @@ func TestGetFw4TagFromTracestateWithMismatchingClustertId(t *testing.T) {
 	ts, err := ts.Insert("11-81@dt", "fw4;1;ec354cd6;1;2;0;0;3039;4589;1h48656c6c6f2c20576f726c6421;2h0123")
 	require.NoError(t, err)
 
-	tag, err := GetMatchingFw4FromTracestate(ts, 17, 0)
+	tag, err := GetMatchingFw4FromTracestate(ts, configuration.QualifiedTenantId{TenantId: 17, ClusterId: 0})
 	require.Equal(t, err, errNoDtTracestateEntry)
 	require.Equal(t, tag, EmptyTag())
 }

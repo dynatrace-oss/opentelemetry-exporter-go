@@ -16,21 +16,25 @@ package trace
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/propagation"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
-	protoSpan, err := createProtoSpan(nil, nil)
+	protoSpan, err := createProtoSpan(nil, nil, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -44,7 +48,7 @@ func TestCreateProtoSpan_NonReadOnlySpan(t *testing.T) {
 		Span:     span,
 		metadata: newDtSpanMetadata(123),
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil)
+	protoSpan, err := createProtoSpan(dtSpan, nil, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -57,7 +61,7 @@ func TestCreateProtoSpan_NoMetadata(t *testing.T) {
 		Span:     span,
 		metadata: nil,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, nil)
+	protoSpan, err := createProtoSpan(dtSpan, nil, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.Nil(t, protoSpan)
 	require.Error(t, err)
 }
@@ -76,7 +80,7 @@ func TestCreateProtoSpan(t *testing.T) {
 		Type:      protoTrace.CustomTag_Generic,
 		Direction: protoTrace.CustomTag_Incoming,
 	}
-	protoSpan, err := createProtoSpan(dtSpan, customTag)
+	protoSpan, err := createProtoSpan(dtSpan, customTag, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.NotNil(t, protoSpan)
 	require.NotNil(t, protoSpan.GetTraceId())
@@ -109,7 +113,7 @@ func TestGetFirstResource_FailsIfSetEmpty(t *testing.T) {
 }
 
 func TestGetResourceForSpanExport(t *testing.T) {
-	spanResource := resource.NewSchemaless(attribute.String("key", "value"))
+	spanResource := sdkresource.NewSchemaless(attribute.String("key", "value"))
 
 	exportResource, err := getResourceForSpanExport(spanResource)
 	require.NoError(t, err)
@@ -137,7 +141,7 @@ func TestGetResourceForSpanExport(t *testing.T) {
 }
 
 func TestGetResourceForSpanExport_SpanResourceTakesPrecedence(t *testing.T) {
-	spanResource := resource.NewSchemaless(
+	spanResource := sdkresource.NewSchemaless(
 		attribute.String("key", "value"),
 		attribute.String("telemetry.sdk.language", "test_sdk_language"),
 	)
@@ -278,7 +282,7 @@ func TestGetProtoLinks(t *testing.T) {
 		},
 	}
 
-	protoLinks, err := getProtoLinks(links)
+	protoLinks, err := getProtoLinks(links, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
 	require.NoError(t, err)
 	require.Len(t, protoLinks, len(links))
 
@@ -291,5 +295,117 @@ func TestGetProtoLinks(t *testing.T) {
 		require.EqualValues(t, protoLink.GetAttributes()[0].GetKey(), links[i].Attributes[0].Key)
 		require.Equal(t, protoLink.GetAttributes()[0].GetStringValue(), links[i].Attributes[0].Value.AsString())
 		require.EqualValues(t, protoLink.GetDroppedAttributesCount(), links[i].DroppedAttributeCount)
+	}
+}
+
+func TestParentLinkIdExportedForRemoteParentSpans(t *testing.T) {
+	propagator, _ := NewTextMapPropagator()
+	ids := configuration.QualifiedTenantId{TenantId: propagator.config.TenantId(), ClusterId: propagator.config.ClusterId}
+	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
+		"traceparent": "00-11223344556677889900112233445566-aabbccddeeffaabb-01",
+		"tracestate":  fmt.Sprintf("%s=fw4;fffffffd;0;0;ab;0;3;0", fw4.TraceStateKey(ids)),
+	})
+
+	tp, _ := NewTracerProvider()
+	ctx, span := tp.Tracer("test").Start(parentCtx, "test_span")
+	span.End()
+	dtSpan := span.(*dtSpan)
+	tp.ForceFlush(ctx)
+
+	protoSpan, err := createProtoSpan(dtSpan, nil, ids)
+
+	require.NoError(t, err)
+	require.NotNil(t, protoSpan.ParentFwtagEncodedLinkId)
+	require.Equal(t, *protoSpan.ParentFwtagEncodedLinkId, int32(0x180000AB))
+}
+
+func TestParentLinkIdNotExportedForNonRemoteSpans(t *testing.T) {
+	tp, _ := NewTracerProvider()
+	tracer := tp.Tracer("test")
+	ctx, parentSpan := tracer.Start(context.Background(), "parent_span")
+	ctx, childSpan := tracer.Start(ctx, "child_span")
+	childSpan.End()
+	parentSpan.End()
+	tp.ForceFlush(ctx)
+
+	dtSpan := childSpan.(*dtSpan)
+	protoSpan, err := createProtoSpan(dtSpan, nil, configuration.QualifiedTenantId{})
+
+	require.NoError(t, err)
+	require.Nil(t, protoSpan.ParentFwtagEncodedLinkId)
+}
+
+func TestLinkIdExportedForRemoteLinks(t *testing.T) {
+	propagator, _ := NewTextMapPropagator()
+	ids := configuration.QualifiedTenantId{TenantId: propagator.config.TenantId(), ClusterId: propagator.config.ClusterId}
+	tsKey := fw4.TraceStateKey(ids)
+
+	remoteEncodedLinkId := int32(0x180000AB) // sampling-exp (3) | link-id (171)
+	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
+		"traceparent": "00-11223344556677889900112233445566-aabbccddeeffaabb-01",
+		"tracestate":  fmt.Sprintf("%s=fw4;fffffffd;0;0;ab;0;3;0", tsKey),
+	})
+
+	links := []sdktrace.Link{
+		{
+			SpanContext: trace.SpanContextFromContext(parentCtx),
+		},
+	}
+
+	protoLinks, err := getProtoLinks(links, ids)
+	require.NoError(t, err)
+	require.Len(t, protoLinks, len(links))
+
+	for _, protoLink := range protoLinks {
+		require.NotNil(t, protoLink.FwtagEncodedLinkId)
+		require.Equal(t, *protoLink.FwtagEncodedLinkId, remoteEncodedLinkId)
+	}
+}
+
+func TestLinkIdExportedForSpanWithRemoteParentInXDtc(t *testing.T) {
+	propagator, _ := NewTextMapPropagator()
+	tenantId := propagator.config.TenantId()
+	clusterId := propagator.config.ClusterId
+
+	remoteEncodedLinkId := int32(0x180000AB) // sampling-exp (3) | link-id (171)
+	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
+		"traceparent": "00-11223344556677889900112233445566-aabbccddeeffaabb-01",
+		"x-dynatrace": fmt.Sprintf("FW4;%v;42;0;0;%v;%v;0;82fe;6h11223344556677889900aabbccddeeff;7h1234567890abcdef",
+			clusterId, remoteEncodedLinkId, tenantId),
+	})
+
+	links := []sdktrace.Link{
+		{
+			SpanContext: trace.SpanContextFromContext(parentCtx),
+		},
+	}
+
+	protoLinks, err := getProtoLinks(links, configuration.QualifiedTenantId{TenantId: tenantId, ClusterId: clusterId})
+	require.NoError(t, err)
+	require.Len(t, protoLinks, len(links))
+
+	for _, protoLink := range protoLinks {
+		require.NotNil(t, protoLink.FwtagEncodedLinkId)
+		require.Equal(t, *protoLink.FwtagEncodedLinkId, remoteEncodedLinkId)
+	}
+}
+
+func TestLinksWithoutFw4TagGetNoLinkId(t *testing.T) {
+	links := []sdktrace.Link{
+		{
+			SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
+				TraceID:    trace.TraceID{1, 2, 3, 4, 5, 6, 7, 8},
+				SpanID:     trace.SpanID{1, 2, 3, 4, 5, 6, 7, 8},
+				TraceFlags: 0,
+			}),
+		},
+	}
+
+	protoLinks, err := getProtoLinks(links, configuration.QualifiedTenantId{TenantId: 0, ClusterId: 0})
+	require.NoError(t, err)
+	require.Len(t, protoLinks, len(links))
+
+	for _, protoLink := range protoLinks {
+		require.Nil(t, protoLink.FwtagEncodedLinkId)
 	}
 }

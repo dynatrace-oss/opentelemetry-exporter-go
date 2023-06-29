@@ -108,7 +108,7 @@ func (p *DtTextMapPropagator) Extract(parentCtx context.Context, carrier propaga
 	if xDt := carrier.Get(xDtHeader); len(xDt) > 0 {
 		p.logger.Debugf("FW4 tag from x-dynatrace header: %s", xDt)
 
-		if tag, err := fw4.GetMatchingFw4FromXDynatrace(xDt, p.config.TenantId(), p.config.ClusterId); err == nil {
+		if tag, err := fw4.GetMatchingFw4FromXDynatrace(xDt, p.config.QualifiedTenantId()); err == nil {
 			if remoteSpanCtx.IsValid() && remoteSpanCtx.TraceID() == tag.TraceID {
 				return contextWithFw4TagAndUpdatedSpanContext(parentCtx, remoteSpanCtx, tag)
 			} else {
@@ -128,7 +128,7 @@ func (p *DtTextMapPropagator) Extract(parentCtx context.Context, carrier propaga
 	}
 
 	// look for matching FW4 tag in tracestate field
-	if tag, err := fw4.GetMatchingFw4FromTracestate(remoteSpanCtx.TraceState(), p.config.TenantId(), p.config.ClusterId); err == nil {
+	if tag, err := fw4.GetMatchingFw4FromTracestate(remoteSpanCtx.TraceState(), p.config.QualifiedTenantId()); err == nil {
 		p.logger.Debugf("FW4 tag from tracestate field: %s", remoteSpanCtx.TraceState())
 
 		if tag.TraceID.IsValid() && remoteSpanCtx.TraceID() != tag.TraceID {
