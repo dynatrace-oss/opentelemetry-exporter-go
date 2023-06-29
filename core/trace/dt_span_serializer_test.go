@@ -298,6 +298,43 @@ func TestGetProtoLinks(t *testing.T) {
 	}
 }
 
+func TestParentLinkIdExportedForRemoteParentSpans(t *testing.T) {
+	propagator, _ := NewTextMapPropagator()
+	ids := configuration.QualifiedTenantId{TenantId: propagator.config.TenantId(), ClusterId: propagator.config.ClusterId}
+	parentCtx := propagator.Extract(context.Background(), propagation.MapCarrier{
+		"traceparent": "00-11223344556677889900112233445566-aabbccddeeffaabb-01",
+		"tracestate":  fmt.Sprintf("%s=fw4;fffffffd;0;0;ab;0;3;0", fw4.TraceStateKey(ids)),
+	})
+
+	tp, _ := NewTracerProvider()
+	ctx, span := tp.Tracer("test").Start(parentCtx, "test_span")
+	span.End()
+	dtSpan := span.(*dtSpan)
+	tp.ForceFlush(ctx)
+
+	protoSpan, err := createProtoSpan(dtSpan, nil, ids)
+
+	require.NoError(t, err)
+	require.NotNil(t, protoSpan.ParentFwtagEncodedLinkId)
+	require.Equal(t, *protoSpan.ParentFwtagEncodedLinkId, int32(0x180000AB))
+}
+
+func TestParentLinkIdNotExportedForNonRemoteSpans(t *testing.T) {
+	tp, _ := NewTracerProvider()
+	tracer := tp.Tracer("test")
+	ctx, parentSpan := tracer.Start(context.Background(), "parent_span")
+	ctx, childSpan := tracer.Start(ctx, "child_span")
+	childSpan.End()
+	parentSpan.End()
+	tp.ForceFlush(ctx)
+
+	dtSpan := childSpan.(*dtSpan)
+	protoSpan, err := createProtoSpan(dtSpan, nil, configuration.QualifiedTenantId{})
+
+	require.NoError(t, err)
+	require.Nil(t, protoSpan.ParentFwtagEncodedLinkId)
+}
+
 func TestLinkIdExportedForRemoteLinks(t *testing.T) {
 	propagator, _ := NewTextMapPropagator()
 	ids := configuration.QualifiedTenantId{TenantId: propagator.config.TenantId(), ClusterId: propagator.config.ClusterId}
