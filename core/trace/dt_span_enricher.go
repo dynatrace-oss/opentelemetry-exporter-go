@@ -17,9 +17,11 @@ package trace
 import (
 	"context"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/semconv"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/trace/internal/util"
 )
 
@@ -36,6 +38,7 @@ func createSpanMetadata(
 
 	metadata := newDtSpanMetadata(spanProcessingIntervalMs)
 	metadata.tenantParentSpanId = tenantParentSpanIdFromContext(parentCtx)
+	metadata.propagatedResourceAttributes = getPropagatedResourceAttributes(parentCtx)
 
 	fw4Tag := fw4TagFromContextOrMetadata(parentCtx)
 
@@ -71,4 +74,49 @@ func fw4TagFromContextOrMetadata(ctx context.Context) *fw4.Fw4Tag {
 		return parentSpanMetaData.getFw4Tag()
 	}
 	return nil
+}
+
+var emptyMapValue struct{}
+
+var attributeKeysToPropagate = map[attribute.Key]struct{}{
+	attribute.Key(semconv.DtFaasAwsInitializationType): emptyMapValue,
+	attribute.Key(semconv.CloudAccountId):              emptyMapValue,
+	attribute.Key(semconv.CloudPlatform):               emptyMapValue,
+	attribute.Key(semconv.CloudProvider):               emptyMapValue,
+	attribute.Key(semconv.CloudRegion):                 emptyMapValue,
+	attribute.Key(semconv.CloudAvailabilityZone):       emptyMapValue,
+	attribute.Key(semconv.FaasId):                      emptyMapValue,
+	attribute.Key(semconv.FaasName):                    emptyMapValue,
+	attribute.Key(semconv.FaasVersion):                 emptyMapValue,
+	attribute.Key(semconv.FaasInstance):                emptyMapValue,
+	attribute.Key(semconv.GcpRegion):                   emptyMapValue,
+	attribute.Key(semconv.GcpProjectId):                emptyMapValue,
+	attribute.Key(semconv.GcpInstanceName):             emptyMapValue,
+	attribute.Key(semconv.GcpResourceType):             emptyMapValue,
+}
+
+func getPropagatedResourceAttributes(ctx context.Context) propagatedResourceAttributes {
+	parentSpan := trace.SpanFromContext(ctx)
+	if parentMetadata := dtSpanMetadataFromSpan(parentSpan); parentMetadata != nil {
+		if parentMetadata.propagatedResourceAttributes != nil {
+			// when available just take it from the parent, to minimize span attribute access
+			// which deduplicates potential attributes.
+			return parentMetadata.propagatedResourceAttributes
+		}
+	}
+
+	if parentSpan.SpanContext().IsRemote() || !parentSpan.SpanContext().IsValid() {
+		// A (local) root span might not have all attributes set when it is created, so let
+		// the immediate child spans pull the attributes to propagate.
+		return nil
+	}
+
+	propagatedAttributes := make(propagatedResourceAttributes)
+	for _, attr := range attributesFromSpan(parentSpan) {
+		if _, ok := attributeKeysToPropagate[attr.Key]; ok {
+			propagatedAttributes[attr.Key] = attr
+		}
+	}
+
+	return propagatedAttributes
 }

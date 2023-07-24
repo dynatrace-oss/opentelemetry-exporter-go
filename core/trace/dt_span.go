@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -91,4 +92,15 @@ func (s *dtSpan) prepareSend(sendTime int64) prepareResult {
 	}
 
 	return shouldSend
+}
+
+func attributesFromSpan(span trace.Span) []attribute.KeyValue {
+	if dtSpan, ok := span.(*dtSpan); ok {
+		span = dtSpan.Span
+	}
+	if readWriteSpan, ok := span.(sdktrace.ReadWriteSpan); ok {
+		return readWriteSpan.Attributes()
+	}
+
+	return nil
 }

@@ -154,7 +154,7 @@ func createProtoSpan(dtSpan *dtSpan, incomingCustomTag *protoTrace.CustomTag, qu
 		}
 
 		spanMsg.Attributes = append(spanMsg.Attributes, createInstrumentationLibAttrs(span)...)
-		protoAttributes, err := getProtoAttributes(span.Attributes())
+		protoAttributes, err := getProtoSpanAttributes(span.Attributes(), spanMetadata.propagatedResourceAttributes)
 		if err != nil {
 			return nil, err
 		}

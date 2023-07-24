@@ -18,7 +18,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/semconv"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -130,4 +132,83 @@ func TestRemoteParentWithTracestateAndWrongTenantId(t *testing.T) {
 	require.NotNil(t, tag)
 	require.EqualValues(t, tag.ServerID, 0)
 	require.True(t, tag.PathInfo < 256)
+}
+
+var testPropagatingAttributes = []attribute.KeyValue{
+	attribute.Key(semconv.CloudAccountId).String("my-account"),
+	attribute.Key(semconv.CloudPlatform).String("some-platform"),
+	attribute.Key(semconv.CloudProvider).String("the-cloud"),
+	attribute.Key(semconv.CloudRegion).String("moonbase-1"),
+	attribute.Key(semconv.CloudAvailabilityZone).String("sector-5"),
+	attribute.Key(semconv.FaasId).String("123-456"),
+	attribute.Key(semconv.FaasName).String("the-function"),
+	attribute.Key(semconv.FaasVersion).Int64(777),
+	attribute.Key(semconv.FaasInstance).String("xyz"),
+	attribute.Key(semconv.GcpRegion).String("moonbase-1"),
+	attribute.Key(semconv.GcpProjectId).String("my-project"),
+	attribute.Key(semconv.GcpInstanceName).String("the-instance"),
+	attribute.Key(semconv.GcpResourceType).String("resource-type"),
+}
+
+func TestLocalParent_PropagateResourceAttributes(t *testing.T) {
+	attributes := []attribute.KeyValue{attribute.Key("parent.attr").String("hello parent")}
+	attributes = append(attributes, testPropagatingAttributes...)
+
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
+	ctx, localParent := tr.Start(context.Background(), "local root", trace.WithAttributes(attributes...))
+	childCtx, child := tr.Start(ctx, "child", trace.WithAttributes(attribute.Key("child.attr").String("hello child")))
+	_, sibling := tr.Start(ctx, "sibling", trace.WithAttributes(attribute.Key("sibling.attr").String("hello sibling")))
+	_, grandChild := tr.Start(childCtx, "grandchild", trace.WithAttributes(attribute.Key("grandchild.attr").String("hello grandchild")))
+
+	expectedPropagatedAttributes := attributesToMap(t, testPropagatingAttributes)
+
+	parentMetadata := localParent.(*dtSpan).metadata
+	require.Nil(t, parentMetadata.propagatedResourceAttributes)
+
+	childMetadata := child.(*dtSpan).metadata
+	require.NotNil(t, childMetadata.propagatedResourceAttributes)
+	assertAttributeEquals(t, expectedPropagatedAttributes, childMetadata.propagatedResourceAttributes)
+
+	siblingMetadata := sibling.(*dtSpan).metadata
+	require.NotNil(t, siblingMetadata.propagatedResourceAttributes)
+	assertAttributeEquals(t, expectedPropagatedAttributes, siblingMetadata.propagatedResourceAttributes)
+
+	grandChildMetadata := grandChild.(*dtSpan).metadata
+	require.Equal(t, childMetadata.propagatedResourceAttributes, grandChildMetadata.propagatedResourceAttributes)
+	assertAttributeEquals(t, expectedPropagatedAttributes, grandChildMetadata.propagatedResourceAttributes)
+}
+
+func TestRemoteParent_PropagateResourceAttributes(t *testing.T) {
+	c := propagation.HeaderCarrier{}
+	c.Set(traceparentHeader, "00-11223344556677889900112233445566-aaffffeebbaabbee-01")
+	c.Set(tracestateHeader, "6cab5bb-7b@dt=fw4;fffffff8;0;0;0;0;0;0;7db5;2h01;7h8877665544332211")
+
+	p, err := NewTextMapPropagator()
+	require.NotNil(t, p)
+	require.NoError(t, err)
+
+	remoteCtx := p.Extract(context.Background(), c)
+
+	tp, _ := newDtTracerProviderWithTestExporter()
+	tr := tp.Tracer("Dynatrace tracer")
+
+	attributes := []attribute.KeyValue{attribute.Key("parent.attr").String("hello parent")}
+	attributes = append(attributes, testPropagatingAttributes...)
+	ctx, localRoot := tr.Start(remoteCtx, "local root", trace.WithAttributes(attributes...))
+	childCtx, child := tr.Start(ctx, "child", trace.WithAttributes(attribute.Key("child.attr").String("hello child")))
+	_, sibling := tr.Start(ctx, "sibling", trace.WithAttributes(attribute.Key("sibling.attr").String("hello sibling")))
+	_, grandChild := tr.Start(childCtx, "grandchild", trace.WithAttributes(attribute.Key("grandchild.attr").String("hello grandchild")))
+
+	rootMetadata := localRoot.(*dtSpan).metadata
+	require.Nil(t, rootMetadata.propagatedResourceAttributes)
+
+	childMetadata := child.(*dtSpan).metadata
+	require.NotNil(t, childMetadata.propagatedResourceAttributes)
+
+	siblingMetadata := sibling.(*dtSpan).metadata
+	require.NotNil(t, siblingMetadata.propagatedResourceAttributes)
+
+	grandChildMetadata := grandChild.(*dtSpan).metadata
+	require.Equal(t, childMetadata.propagatedResourceAttributes, grandChildMetadata.propagatedResourceAttributes)
 }

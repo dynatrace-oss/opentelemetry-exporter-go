@@ -108,6 +108,73 @@ func getProtoAttributes(attributes []attribute.KeyValue) ([]*protoCommon.Attribu
 	return protoAttrs, nil
 }
 
+func getProtoSpanAttributes(attributes []attribute.KeyValue, propagatedAttributes propagatedResourceAttributes) ([]*protoCommon.AttributeKeyValue, error) {
+	if propagatedAttributes == nil || len(propagatedAttributes) == 0 {
+		return getProtoAttributes(attributes)
+	}
+
+	protoAttrs := make([]*protoCommon.AttributeKeyValue, 0, len(attributes)+len(propagatedAttributes))
+	for _, attr := range propagatedAttributes {
+		protoAttr, err := createProtoAttribute(attr)
+		if err != nil {
+			return nil, err
+		}
+		protoAttrs = append(protoAttrs, protoAttr)
+	}
+
+	for _, attr := range attributes {
+		if propagatedAttr, ok := (propagatedAttributes)[attr.Key]; ok {
+			if areEqual, err := attributeValueEquals(propagatedAttr.Value, attr.Value); areEqual {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+
+			attr = attribute.KeyValue{
+				// Since we support at most 1 overwritten attribute per key here we can hardcode the prefix to index 1
+				Key:   attribute.Key("overwritten1." + attr.Key),
+				Value: attr.Value,
+			}
+		}
+
+		protoAttr, err := createProtoAttribute(attr)
+		if err != nil {
+			return nil, err
+		}
+		protoAttrs = append(protoAttrs, protoAttr)
+	}
+
+	return protoAttrs, nil
+}
+
+func attributeValueEquals(first attribute.Value, second attribute.Value) (bool, error) {
+	attrType := first.Type()
+	if attrType != second.Type() {
+		return false, nil
+	}
+
+	switch attrType {
+	case attribute.BOOL:
+		return first.AsBool() == second.AsBool(), nil
+	case attribute.INT64:
+		return first.AsInt64() == second.AsInt64(), nil
+	case attribute.FLOAT64:
+		return first.AsFloat64() == second.AsFloat64(), nil
+	case attribute.STRING:
+		return first.AsString() == second.AsString(), nil
+	case attribute.BOOLSLICE:
+		return boolSliceEquals(first.AsBoolSlice(), second.AsBoolSlice()), nil
+	case attribute.INT64SLICE:
+		return int64SliceEquals(first.AsInt64Slice(), second.AsInt64Slice()), nil
+	case attribute.FLOAT64SLICE:
+		return float64SliceEquals(first.AsFloat64Slice(), second.AsFloat64Slice()), nil
+	case attribute.STRINGSLICE:
+		return stringSliceEquals(first.AsStringSlice(), second.AsStringSlice()), nil
+	default:
+		return false, fmt.Errorf("unknown attribute type: %s", attrType)
+	}
+}
+
 func createProtoAttribute(attr attribute.KeyValue) (*protoCommon.AttributeKeyValue, error) {
 	attrKeyVal := protoCommon.AttributeKeyValue{
 		Key: string(attr.Key),
