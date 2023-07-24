@@ -109,7 +109,7 @@ func getProtoAttributes(attributes []attribute.KeyValue) ([]*protoCommon.Attribu
 }
 
 func getProtoSpanAttributes(attributes []attribute.KeyValue, propagatedAttributes propagatedResourceAttributes) ([]*protoCommon.AttributeKeyValue, error) {
-	if propagatedAttributes == nil || len(propagatedAttributes) == 0 {
+	if len(propagatedAttributes) == 0 {
 		return getProtoAttributes(attributes)
 	}
 
