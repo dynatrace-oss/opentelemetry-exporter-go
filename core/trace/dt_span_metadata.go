@@ -22,6 +22,7 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -37,6 +38,7 @@ const (
 )
 
 type prepareResult int
+type propagatedResourceAttributes map[attribute.Key]attribute.KeyValue
 
 const (
 	prepareResultDrop prepareResult = iota
@@ -54,6 +56,8 @@ type dtSpanMetadata struct {
 	fw4Tag              *fw4.Fw4Tag
 	lastPropagationTime time.Time
 	tenantParentSpanId  trace.SpanID
+
+	propagatedResourceAttributes propagatedResourceAttributes
 
 	mutex sync.Mutex
 }

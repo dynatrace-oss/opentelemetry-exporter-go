@@ -31,6 +31,9 @@ const (
 	// Prefix for 'dt.env_vars'
 	DtEnvVarsPrefix = "dt.env_vars"
 
+	// Prefix for 'dt.faas_resource'
+	DtFaasResourcePrefix = "dt.faas"
+
 	// Prefix for 'dt.ims_resource'
 	DtImsResourcePrefix = "dt.ims"
 
@@ -105,9 +108,6 @@ const (
 
 	// Prefix for 'dt.exception'
 	DtExceptionPrefix = "dt.exception"
-
-	// Prefix for 'dt.faas'
-	DtFaasPrefix = "dt.faas"
 
 	// Prefix for 'dt.code'
 	DtCodePrefix = "dt.code"
@@ -234,6 +234,12 @@ const (
 	// Reports the value of the `DT_TAGS` environment variable as described [here](https://www.dynatrace.com/support/help/how-to-use-dynatrace/tags-and-metadata/setup/define-tags-based-on-environment-variables/).
 	// This attribute expects a value of type string.
 	DtEnvVarsDtTags = "dt.env_vars.dt_tags"
+
+	// The AWS Lambda initialization type (see [AWS_LAMBDA_INITIALIZATION_TYPE environment variable](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime)).
+	// This attribute expects a value of type string from the enumeration DtFaasAwsInitializationTypeValues.
+	//
+	// This is especially interesting for runtimes supporting [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) (currently only Java).
+	DtFaasAwsInitializationType = "dt.faas.aws.initialization_type"
 
 	// Deprecated: Use `dt.tech.agent_detected_main_technology` instead
 	// True if the agent is running in an IMS SOAP gateway process. Not set otherwise.
@@ -628,6 +634,10 @@ const (
 	// The topology of the database in relation to the application performing database requests.
 	// This attribute expects a value of type string from the enumeration DtDbTopologyValues.
 	DtDbTopology = "dt.db.topology"
+
+	// How a query is executed, as a query or update. Should not parse the query but should be determined by which method was called to execute the query. For example in JDBC terms it would be "executeQuery" -> query and all other "execute*" methods -> update.
+	// This attribute expects a value of type string from the enumeration DtDbExecutionTypeValues.
+	DtDbExecutionType = "dt.db.execution_type"
 
 	// The exception types of a caused-by chain, represented by their fully-qualified type names encoded as a single string (see [Encoding of Exception Data](https://bitbucket.lab.dynatrace.org/projects/ODIN/repos/odin-spec/browse/spec/semantic_conventions/exception_conventions.md#encoding-of-exception-data)).
 	// This attribute expects a value of type string.
@@ -1232,6 +1242,18 @@ const (
 	CloudPlatformGcpAppEngine = "gcp_app_engine"
 )
 
+// The available values for dt.faas.aws.initialization_type.
+const (
+	// on_demand
+	DtFaasAwsInitializationTypeOnDemand = "on-demand"
+
+	// provisioned_concurrency
+	DtFaasAwsInitializationTypeProvisionedConcurrency = "provisioned-concurrency"
+
+	// snap_start
+	DtFaasAwsInitializationTypeSnapStart = "snap-start"
+)
+
 // The available values for dt.os.type.
 const (
 	// Fallback, if the OS can't be determined
@@ -1641,6 +1663,15 @@ const (
 
 	// cluster
 	DtDbTopologyCluster = "cluster"
+)
+
+// The available values for dt.db.execution_type.
+const (
+	// update
+	DtDbExecutionTypeUpdate = "update"
+
+	// query
+	DtDbExecutionTypeQuery = "query"
 )
 
 // The available values for faas.trigger.

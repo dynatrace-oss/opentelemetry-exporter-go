@@ -31,6 +31,7 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoTrace "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/trace/v1"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/semconv"
 )
 
 func TestCreateProtoSpan_NilDtSpan(t *testing.T) {
@@ -74,7 +75,9 @@ func TestCreateProtoSpan(t *testing.T) {
 	err := tp.ForceFlush(context.Background())
 	require.NoError(t, err)
 
+	propagatingAttributes := []attribute.KeyValue{attribute.Key("test.attr").String("test.value")}
 	dtSpan := span.(*dtSpan)
+	dtSpan.metadata.propagatedResourceAttributes = attributesToMap(t, propagatingAttributes)
 
 	customTag := &protoTrace.CustomTag{
 		Type:      protoTrace.CustomTag_Generic,
@@ -88,6 +91,10 @@ func TestCreateProtoSpan(t *testing.T) {
 	require.Nil(t, protoSpan.GetParentSpanId())
 	require.Equal(t, protoSpan.GetName(), "test span")
 	require.Same(t, protoSpan.GetCustomTag(), customTag)
+	assertProtoAttributes(t, protoSpan.GetAttributes(), append(
+		propagatingAttributes,
+		attribute.Key(semconv.OtelLibraryName).String("test"), attribute.Key(semconv.OtelLibraryVersion).String(""),
+	))
 }
 
 func TestGetFirstResource(t *testing.T) {
