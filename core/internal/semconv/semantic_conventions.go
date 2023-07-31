@@ -407,7 +407,7 @@ const (
 	// For Cloud, this value is from the provider.
 	HostImageId = "host.image.id"
 
-	// The version string of the VM image as defined in [Version Attributes](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/resource/semantic_conventions#version-attributes).
+	// The version string of the VM image as defined in [Version Attributes](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.23.0/specification/resource/semantic_conventions/README.md#version-attributes).
 	// This attribute expects a value of type string.
 	HostImageVersion = "host.image.version"
 
@@ -473,7 +473,7 @@ const (
 	// MUST be unique for each instance of the same `service.namespace,service.name` pair (in other words `service.namespace,service.name,service.id` triplet MUST be globally unique). The ID helps to distinguish instances of the same service that exist at the same time (e.g. instances of a horizontally scaled service). It is preferable for the ID to be persistent and stay the same for the lifetime of the service instance, however it is acceptable that the ID is ephemeral and changes during important lifetime events for the service (e.g. service restarts). If the service has no inherent unique ID that can be used as the value of this attribute it is recommended to generate a random Version 1 or Version 4 RFC 4122 UUID (services aiming for reproducible UUIDs may also use Version 5, see RFC 4122 for more recommendations).
 	ServiceInstanceId = "service.instance.id"
 
-	// The version string of the service API or implementation as defined in [Version Attributes](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/resource/semantic_conventions#version-attributes).
+	// The version string of the service API or implementation as defined in [Version Attributes](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.23.0/specification/resource/semantic_conventions/README.md#version-attributes).
 	// This attribute expects a value of type string.
 	ServiceVersion = "service.version"
 
@@ -487,7 +487,7 @@ const (
 	// This attribute expects a value of type string from the enumeration TelemetrySdkLanguageValues.
 	TelemetrySdkLanguage = "telemetry.sdk.language"
 
-	// The version string of the service API or implementation as defined in [Version Attributes](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/resource/semantic_conventions#version-attributes).
+	// The version string of the service API or implementation as defined in [Version Attributes](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.23.0/specification/resource/semantic_conventions/README.md#version-attributes).
 	// This attribute expects a value of type string.
 	TelemetrySdkVersion = "telemetry.sdk.version"
 
