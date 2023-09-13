@@ -39,9 +39,6 @@ const (
 
 const cSpansPath = "/odin/v1/spans"
 
-const cMaxSizeWarning = 1 * 1024 * 1024 // 1 MB
-const cMaxSizeSend = 64 * 1024 * 1024   // 64 MB
-
 var errNotAuthorizedRequest = errors.New("Span Exporter is not authorized to send spans")
 
 type dtSpanExporter interface {
@@ -87,25 +84,34 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	e.logger.Debugf("Serialize %d spans to export", len(spans))
 
 	start := time.Now()
-	// TODO: In order to support large amounts of spans, implement a splitting algorithm
-	// so that we can send spans in batches whose sizes do not exceed cMaxSizeSend.
-	serializedSpans, err := serializeSpans(spans, e.config.Tenant, e.config.AgentId, e.config.QualifiedTenantId())
+	serializedSpanExports, err := serializeSpans(spans, e.config.Tenant, e.config.AgentId, e.config.QualifiedTenantId())
 	if err != nil {
 		return err
 	}
 
 	e.logger.Debugf("Serialization process took %s", time.Since(start))
 
-	serializedSpansLen := len(serializedSpans)
-	if serializedSpansLen > cMaxSizeSend {
-		errMsg := fmt.Sprintf("skip exporting, serialized spans reached %d bytes. Maximum allowed size is %d bytes",
-			serializedSpansLen, cMaxSizeSend)
-		return errors.New(errMsg)
-	} else if serializedSpansLen > cMaxSizeWarning {
-		e.logger.Warnf("Size of serialized spans reached %d bytes", serializedSpansLen)
+	// serializedSpansLen := len(serializedSpanExports)
+	// if serializedSpansLen > cMaxSizeSend {
+	// 	errMsg := fmt.Sprintf("skip exporting, serialized spans reached %d bytes. Maximum allowed size is %d bytes",
+	// 		serializedSpansLen, cMaxSizeSend)
+	// 	return errors.New(errMsg)
+	// } else if serializedSpansLen > cMaxSizeWarning {
+	// 	e.logger.Warnf("Size of serialized spans reached %d bytes", serializedSpansLen)
+	// }
+
+	for _, spanExport := range serializedSpanExports {
+		err = e.doExportRequest(ctx, t, spanExport)
+		if err != nil {
+			return err
+		}
 	}
 
-	reqBody := bytes.NewReader(serializedSpans)
+	return nil
+}
+
+func (e *dtSpanExporterImpl) doExportRequest(ctx context.Context, t exportType, spanExport exportData) error {
+	reqBody := bytes.NewReader(spanExport)
 	req, err := e.newRequest(ctx, reqBody)
 	if err != nil {
 		return err
@@ -124,7 +130,6 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errors.New("unexpected response code: " + strconv.Itoa(resp.StatusCode))
 	}
-
 	return nil
 }
 

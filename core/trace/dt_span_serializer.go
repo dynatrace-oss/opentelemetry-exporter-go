@@ -32,31 +32,18 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
 )
 
+const (
+	cMsgSizeMax  = 64 * 1024 * 1024 // 64 MB
+	cMsgSizeWarn = 1 * 1024 * 1024  // 1 MB
+)
+
+type exportData []byte
+
 func serializeSpans(
 	spans dtSpanSet,
 	tenantUUID string,
 	agentId int64,
-	qualifiedTenantId configuration.QualifiedTenantId) ([]byte, error) {
-
-	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
-
-	for span := range spans {
-		fw4Tag := span.metadata.fw4Tag
-		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
-
-		spanMsg, err := createProtoSpan(span, customTag, qualifiedTenantId)
-		if err != nil {
-			return nil, err
-		}
-
-		serializedClusterSpanEnvelope, err := createSerializedClusterSpanEnvelope(spanMsg, customTag, int32(fw4Tag.PathInfo))
-		if err != nil {
-			return nil, err
-		}
-
-		agSpanEnvelope := createAgSpanEnvelope(serializedClusterSpanEnvelope, int64(fw4Tag.ServerID), spanMsg.TraceId)
-		agSpanEnvelopes = append(agSpanEnvelopes, agSpanEnvelope)
-	}
+	qualifiedTenantId configuration.QualifiedTenantId) ([]exportData, error) {
 
 	exportMetaInfo, err := proto.Marshal(&protoCollectorCommon.ExportMetaInfo{
 		TimeSyncMode: protoCollectorCommon.ExportMetaInfo_NTPSync,
@@ -79,9 +66,95 @@ func serializeSpans(
 		AgentId:        agentId,
 		ExportMetaInfo: exportMetaInfo,
 		Resource:       serializedResource,
-		Spans:          agSpanEnvelopes,
 	}
-	return proto.Marshal(spanExport)
+
+	exports := []*protoCollectorTraces.SpanExport{spanExport}
+
+	spanlessMsgSize := proto.Size(spanExport)
+
+	if spanlessMsgSize > cMsgSizeMax {
+		// TODO proper error
+		return nil, errors.New("resource too big, cannot export any spans")
+	}
+
+	sizeSoFar := spanlessMsgSize
+
+	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
+
+	for span := range spans {
+		fw4Tag := span.metadata.fw4Tag
+		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
+
+		spanMsg, err := createProtoSpan(span, customTag, qualifiedTenantId)
+		if err != nil {
+			return nil, err
+		}
+
+		estimatedEnvelopeSize := 0
+
+		serializedClusterSpanEnvelope, err := createSerializedClusterSpanEnvelope(spanMsg, customTag, int32(fw4Tag.PathInfo))
+		if err != nil {
+			return nil, err
+		}
+
+		// Estimate 1 byte for the tag size and up to 4 byte for the varint
+		// encoding the size of the span container.
+		estimatedEnvelopeSize += len(serializedClusterSpanEnvelope) + 1 + 4
+
+		agSpanEnvelope := createAgSpanEnvelope(serializedClusterSpanEnvelope, int64(fw4Tag.ServerID), spanMsg.TraceId)
+
+		// Estimate 1 byte for the tag size and up to 4 byte for the varint
+		// encoding the size of the cluster envelope.
+		estimatedEnvelopeSize += proto.Size(agSpanEnvelope) + 1 + 4
+
+		if sizeSoFar+estimatedEnvelopeSize > cMsgSizeWarn {
+			if minSize := spanlessMsgSize + estimatedEnvelopeSize; minSize > cMsgSizeMax {
+				// DROP
+				// The size of this span + export msg is too big to ever fit, so we drop this span altogether
+				// and try the next span
+				// TODO log
+				continue
+			}
+
+			// BUFFER
+			// The size exceeds the desired size AND the export already contains a span,
+			// so we buffer the current span into the next envelope
+			if len(agSpanEnvelopes) > 0 {
+				// finish the current spanExport
+				spanExport.Spans = agSpanEnvelopes // necessary?
+
+				// Create a new spanExport
+				// Reset the array
+				// Reset the sizeSoFar
+
+				// new span export
+				spanExport = &protoCollectorTraces.SpanExport{
+					TenantUUID:     tenantUUID,
+					AgentId:        agentId,
+					ExportMetaInfo: exportMetaInfo,
+					Resource:       serializedResource,
+				}
+				exports = append(exports, spanExport)
+				agSpanEnvelopes = make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0)
+				sizeSoFar = spanlessMsgSize
+			}
+		}
+
+		// ADD
+		sizeSoFar += estimatedEnvelopeSize
+		agSpanEnvelopes = append(agSpanEnvelopes, agSpanEnvelope)
+		spanExport.Spans = agSpanEnvelopes
+	}
+
+	serializedExports := make([]exportData, 0, len(exports))
+	for _, export := range exports {
+		serializedExport, err := proto.Marshal(export)
+		if err != nil {
+			return nil, err
+		}
+		serializedExports = append(serializedExports, serializedExport)
+	}
+	return serializedExports, nil
 }
 
 func getFirstResource(spans dtSpanSet) (*resource.Resource, error) {
@@ -185,6 +258,7 @@ func createSerializedClusterSpanEnvelope(spanMsg *protoTrace.Span, customTag *pr
 	spanContainer := protoCollectorTraces.SpanContainer{
 		Spans: []*protoTrace.Span{spanMsg},
 	}
+	// TODO we want to do this later??
 	serializedSpanContainer, err := proto.Marshal(&spanContainer)
 	if err != nil {
 		return nil, err
