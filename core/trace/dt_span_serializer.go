@@ -16,6 +16,7 @@ package trace
 
 import (
 	"errors"
+	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -33,9 +34,9 @@ import (
 )
 
 const (
-	cMsgSizeMax = 2 * 1024 * 1024 // 2 MB
-	// cMsgSizeMax  = 64 * 1024 * 1024 // 64 MB
-	cMsgSizeWarn = 1 * 1024 * 1024 // 1 MB
+	// cMsgSizeMax = 2 * 1024 * 1024 // 2 MB
+	cMsgSizeMax  = 64 * 1024 * 1024 // 64 MB
+	cMsgSizeWarn = 1 * 1024 * 1024  // 1 MB
 )
 
 type exportData []byte
@@ -75,7 +76,8 @@ func serializeSpans(
 
 	if spanlessMsgSize > cMsgSizeMax {
 		// TODO proper error
-		return nil, errors.New("resource too big, cannot export any spans")
+		return nil, fmt.Errorf("resource too big (%v), cannot export any spans", spanlessMsgSize)
+		// return nil, errors.New("resource too big, cannot export any spans")
 	}
 
 	sizeSoFar := spanlessMsgSize
@@ -114,6 +116,7 @@ func serializeSpans(
 				// The size of this span + export msg is too big to ever fit, so we drop this span altogether
 				// and try the next span
 				// TODO log
+				fmt.Printf("span too big (%v), dropping\n", minSize)
 				continue
 			}
 
@@ -127,6 +130,8 @@ func serializeSpans(
 				// Create a new spanExport
 				// Reset the array
 				// Reset the sizeSoFar
+
+				fmt.Printf("size (%v) exceeds desired size, creating new export", sizeSoFar+estimatedEnvelopeSize)
 
 				// new span export
 				spanExport = &protoCollectorTraces.SpanExport{
