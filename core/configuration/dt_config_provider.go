@@ -29,7 +29,7 @@ import (
 
 const (
 	DefaultFlushExportConnTimeoutMs   = 1000
-	DefaultFlushExportDataTimeoutMs   = 5000
+	DefaultFlushExportDataTimeoutMs   = 60_000
 	DefaultRegularExportConnTimeoutMs = 10000
 	DefaultRegularExportDataTimeoutMs = 60000
 )
