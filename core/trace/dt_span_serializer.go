@@ -74,6 +74,8 @@ func serializeSpans(
 
 	spanlessMsgSize := proto.Size(spanExport)
 
+	fmt.Printf("spanless message size: %v\n", spanlessMsgSize)
+
 	if spanlessMsgSize > cMsgSizeMax {
 		// TODO proper error
 		return nil, fmt.Errorf("resource too big (%v), cannot export any spans", spanlessMsgSize)
@@ -131,7 +133,7 @@ func serializeSpans(
 				// Reset the array
 				// Reset the sizeSoFar
 
-				fmt.Printf("size (%v) exceeds desired size, creating new export", sizeSoFar+estimatedEnvelopeSize)
+				fmt.Printf("size (%v) exceeds desired size, creating new export\n", sizeSoFar+estimatedEnvelopeSize)
 
 				// new span export
 				spanExport = &protoCollectorTraces.SpanExport{
