@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	cMsgSizeMax  = 64 * 1024 * 1024 // 64 MB
-	cMsgSizeWarn = 1 * 1024 * 1024  // 1 MB
+	cMsgSizeMax = 2 * 1024 * 1024 // 2 MB
+	// cMsgSizeMax  = 64 * 1024 * 1024 // 64 MB
+	cMsgSizeWarn = 1 * 1024 * 1024 // 1 MB
 )
 
 type exportData []byte
