@@ -46,11 +46,12 @@ type dtSpanExporter interface {
 }
 
 type dtSpanExporterImpl struct {
-	logger   *logger.ComponentLogger
-	config   *configuration.DtConfiguration
-	dialer   *net.Dialer
-	client   *http.Client
-	disabled bool
+	logger     *logger.ComponentLogger
+	config     *configuration.DtConfiguration
+	dialer     *net.Dialer
+	client     *http.Client
+	serializer *dtSpanSerializer
+	disabled   bool
 }
 
 func newDtSpanExporter(config *configuration.DtConfiguration) dtSpanExporter {
@@ -64,7 +65,8 @@ func newDtSpanExporter(config *configuration.DtConfiguration) dtSpanExporter {
 				DialContext: d.DialContext,
 			},
 		},
-		disabled: false,
+		serializer: newSpanSerializer(),
+		disabled:   false,
 	}
 
 	return exporter
@@ -84,21 +86,12 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	e.logger.Debugf("Serialize %d spans to export", len(spans))
 
 	start := time.Now()
-	serializedSpanExports, err := serializeSpans(spans, e.config.Tenant, e.config.AgentId, e.config.QualifiedTenantId())
+	serializedSpanExports, err := e.serializer.serializeSpans(spans, e.config.Tenant, e.config.AgentId, e.config.QualifiedTenantId())
 	if err != nil {
 		return err
 	}
 
 	e.logger.Debugf("Serialization process took %s", time.Since(start))
-
-	// serializedSpansLen := len(serializedSpanExports)
-	// if serializedSpansLen > cMaxSizeSend {
-	// 	errMsg := fmt.Sprintf("skip exporting, serialized spans reached %d bytes. Maximum allowed size is %d bytes",
-	// 		serializedSpansLen, cMaxSizeSend)
-	// 	return errors.New(errMsg)
-	// } else if serializedSpansLen > cMaxSizeWarning {
-	// 	e.logger.Warnf("Size of serialized spans reached %d bytes", serializedSpansLen)
-	// }
 
 	for _, spanExport := range serializedSpanExports {
 		err = e.doExportRequest(ctx, t, spanExport)

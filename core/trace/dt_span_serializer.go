@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
+	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/logger"
 	protoCollectorCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/common/v1"
 	protoCollectorTraces "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/collector/traces/v1"
 	protoCommon "github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/odin-proto/common/v1"
@@ -34,14 +35,25 @@ import (
 )
 
 const (
-	// cMsgSizeMax = 2 * 1024 * 1024 // 2 MB
 	cMsgSizeMax  = 64 * 1024 * 1024 // 64 MB
 	cMsgSizeWarn = 1 * 1024 * 1024  // 1 MB
 )
 
 type exportData []byte
 
-func serializeSpans(
+type dtSpanSerializer struct {
+	logger *logger.ComponentLogger
+}
+
+func newSpanSerializer() *dtSpanSerializer {
+	return &dtSpanSerializer{
+		logger: logger.NewComponentLogger("SpanSerializer"),
+	}
+}
+
+// serializeSpans serializes the spans into one or multiple SpanExport messages.
+// Uses a "Next Fit" bin-packing algorithm.
+func (s *dtSpanSerializer) serializeSpans(
 	spans dtSpanSet,
 	tenantUUID string,
 	agentId int64,
@@ -74,12 +86,10 @@ func serializeSpans(
 
 	spanlessMsgSize := proto.Size(spanExport)
 
-	fmt.Printf("spanless message size: %v\n", spanlessMsgSize)
+	s.logger.Debugf("spanless message size: %v", spanlessMsgSize)
 
 	if spanlessMsgSize > cMsgSizeMax {
-		// TODO proper error
 		return nil, fmt.Errorf("resource too big (%v), cannot export any spans", spanlessMsgSize)
-		// return nil, errors.New("resource too big, cannot export any spans")
 	}
 
 	sizeSoFar := spanlessMsgSize
@@ -114,28 +124,18 @@ func serializeSpans(
 
 		if sizeSoFar+estimatedEnvelopeSize > cMsgSizeWarn {
 			if minSize := spanlessMsgSize + estimatedEnvelopeSize; minSize > cMsgSizeMax {
-				// DROP
-				// The size of this span + export msg is too big to ever fit, so we drop this span altogether
+				// DROP: The size of this span + export msg is too big to ever fit, so we drop this span altogether
 				// and try the next span
-				// TODO log
-				fmt.Printf("span too big (%v), dropping\n", minSize)
+				s.logger.Warnf("span too big (%v), dropping", minSize)
 				continue
 			}
 
-			// BUFFER
-			// The size exceeds the desired size AND the export already contains a span,
+			// BUFFER: The size exceeds the desired size AND the export already contains a span,
 			// so we buffer the current span into the next envelope
 			if len(agSpanEnvelopes) > 0 {
-				// finish the current spanExport
-				spanExport.Spans = agSpanEnvelopes // necessary?
+				s.logger.Debugf("size (%v) exceeds desired size, creating new span export", sizeSoFar+estimatedEnvelopeSize)
 
-				// Create a new spanExport
-				// Reset the array
-				// Reset the sizeSoFar
-
-				fmt.Printf("size (%v) exceeds desired size, creating new export\n", sizeSoFar+estimatedEnvelopeSize)
-
-				// new span export
+				// Create a new SpanExport in which to fit the overhanging span
 				spanExport = &protoCollectorTraces.SpanExport{
 					TenantUUID:     tenantUUID,
 					AgentId:        agentId,
@@ -148,7 +148,7 @@ func serializeSpans(
 			}
 		}
 
-		// ADD
+		// ADD: Add the span to the SpanExport
 		sizeSoFar += estimatedEnvelopeSize
 		agSpanEnvelopes = append(agSpanEnvelopes, agSpanEnvelope)
 		spanExport.Spans = agSpanEnvelopes
