@@ -42,23 +42,27 @@ const (
 type exportData []byte
 
 type dtSpanSerializer struct {
-	logger *logger.ComponentLogger
+	logger            *logger.ComponentLogger
+	tenantUUID        string
+	agentId           int64
+	qualifiedTenantId configuration.QualifiedTenantId
 }
 
-func newSpanSerializer() *dtSpanSerializer {
+func newSpanSerializer(
+	tenantUUID string,
+	agentId int64,
+	qualifiedTenantId configuration.QualifiedTenantId) *dtSpanSerializer {
 	return &dtSpanSerializer{
-		logger: logger.NewComponentLogger("SpanSerializer"),
+		logger:            logger.NewComponentLogger("SpanSerializer"),
+		tenantUUID:        tenantUUID,
+		agentId:           agentId,
+		qualifiedTenantId: qualifiedTenantId,
 	}
 }
 
 // serializeSpans serializes the spans into one or multiple SpanExport messages.
 // Uses a "Next Fit" bin-packing algorithm.
-func (s *dtSpanSerializer) serializeSpans(
-	spans dtSpanSet,
-	tenantUUID string,
-	agentId int64,
-	qualifiedTenantId configuration.QualifiedTenantId) ([]exportData, error) {
-
+func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error) {
 	exportMetaInfo, err := proto.Marshal(&protoCollectorCommon.ExportMetaInfo{
 		TimeSyncMode: protoCollectorCommon.ExportMetaInfo_NTPSync,
 	})
@@ -76,8 +80,8 @@ func (s *dtSpanSerializer) serializeSpans(
 	}
 
 	spanExport := &protoCollectorTraces.SpanExport{
-		TenantUUID:     tenantUUID,
-		AgentId:        agentId,
+		TenantUUID:     s.tenantUUID,
+		AgentId:        s.agentId,
 		ExportMetaInfo: exportMetaInfo,
 		Resource:       serializedResource,
 	}
@@ -100,7 +104,7 @@ func (s *dtSpanSerializer) serializeSpans(
 		fw4Tag := span.metadata.fw4Tag
 		customTag := getProtoCustomTag(fw4Tag.CustomBlob)
 
-		spanMsg, err := createProtoSpan(span, customTag, qualifiedTenantId)
+		spanMsg, err := createProtoSpan(span, customTag, s.qualifiedTenantId)
 		if err != nil {
 			return nil, err
 		}
@@ -137,8 +141,8 @@ func (s *dtSpanSerializer) serializeSpans(
 
 				// Create a new SpanExport in which to fit the overhanging span
 				spanExport = &protoCollectorTraces.SpanExport{
-					TenantUUID:     tenantUUID,
-					AgentId:        agentId,
+					TenantUUID:     s.tenantUUID,
+					AgentId:        s.agentId,
 					ExportMetaInfo: exportMetaInfo,
 					Resource:       serializedResource,
 				}

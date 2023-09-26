@@ -65,7 +65,7 @@ func newDtSpanExporter(config *configuration.DtConfiguration) dtSpanExporter {
 				DialContext: d.DialContext,
 			},
 		},
-		serializer: newSpanSerializer(),
+		serializer: newSpanSerializer(config.Tenant, config.AgentId, config.QualifiedTenantId()),
 		disabled:   false,
 	}
 
@@ -86,7 +86,7 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 	e.logger.Debugf("Serialize %d spans to export", len(spans))
 
 	start := time.Now()
-	serializedSpanExports, err := e.serializer.serializeSpans(spans, e.config.Tenant, e.config.AgentId, e.config.QualifiedTenantId())
+	serializedSpanExports, err := e.serializer.serializeSpans(spans)
 	if err != nil {
 		return err
 	}
