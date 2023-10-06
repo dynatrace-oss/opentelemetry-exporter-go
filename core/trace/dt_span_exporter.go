@@ -85,22 +85,30 @@ func (e *dtSpanExporterImpl) export(ctx context.Context, t exportType, spans dtS
 
 	e.logger.Debugf("Serialize %d spans to export", len(spans))
 
-	start := time.Now()
-	serializedSpanExports, err := e.serializer.serializeSpans(spans)
-	if err != nil {
-		return err
-	}
+	// Asynchronously serialize spans and export each chunk (every SpanExport message) as soon as it is done.
+	// In most cases, only a single SpanExport should be received on the channel unless we are dealing with large spans
+	// or resources.
+	exportChannel := make(chan exportData)
+	errorChannel := make(chan error)
+	serializeCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		defer cancel()
+		e.serializer.serializeSpans(spans, exportChannel, errorChannel)
+	}()
 
-	e.logger.Debugf("Serialization process took %s", time.Since(start))
-
-	for _, spanExport := range serializedSpanExports {
-		err = e.doExportRequest(ctx, t, spanExport)
-		if err != nil {
+	for {
+		select {
+		case export := <-exportChannel:
+			err := e.doExportRequest(ctx, t, export)
+			if err != nil {
+				return err
+			}
+		case err := <-errorChannel:
 			return err
+		case <-serializeCtx.Done():
+			return nil
 		}
 	}
-
-	return nil
 }
 
 func (e *dtSpanExporterImpl) doExportRequest(ctx context.Context, t exportType, spanExport exportData) error {

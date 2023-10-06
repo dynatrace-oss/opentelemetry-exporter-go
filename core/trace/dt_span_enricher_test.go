@@ -20,13 +20,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
-	trace "go.opentelemetry.io/otel/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/fw4"
 )
 
-func createTracer() trace.Tracer {
-	tp, _ := newDtTracerProviderWithTestExporter()
+func createTracer(opts ...sdktrace.TracerProviderOption) trace.Tracer {
+	tp, _ := newDtTracerProviderWithTestExporter(opts...)
 	otel.SetTracerProvider(tp)
 	return otel.Tracer("Test tracer")
 }

@@ -62,21 +62,26 @@ func newSpanSerializer(
 
 // serializeSpans serializes the spans into one or multiple SpanExport messages.
 // Uses a "Next Fit" bin-packing algorithm.
-func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error) {
+// The spans are serialized in order and SpanExport messages are sent to the exportChannel.
+// If an error occurs, the error is sent to the error channel and the function returns.
+func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet, exportChannel chan exportData, errorChannel chan error) {
 	exportMetaInfo, err := proto.Marshal(&protoCollectorCommon.ExportMetaInfo{
 		TimeSyncMode: protoCollectorCommon.ExportMetaInfo_NTPSync,
 	})
 	if err != nil {
-		return nil, err
+		errorChannel <- err
+		return
 	}
 
 	firstSpanResource, err := getFirstResource(spans)
 	if err != nil {
-		return nil, err
+		errorChannel <- err
+		return
 	}
 	serializedResource, err := getSerializedResourceForSpanExport(firstSpanResource)
 	if err != nil {
-		return nil, err
+		errorChannel <- err
+		return
 	}
 
 	spanExport := &protoCollectorTraces.SpanExport{
@@ -86,19 +91,28 @@ func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error)
 		Resource:       serializedResource,
 	}
 
-	exports := []*protoCollectorTraces.SpanExport{spanExport}
-
 	spanlessMsgSize := proto.Size(spanExport)
 
 	s.logger.Debugf("spanless message size: %v", spanlessMsgSize)
 
 	if spanlessMsgSize > cMsgSizeMax {
-		return nil, fmt.Errorf("resource too big (%v), cannot export any spans", spanlessMsgSize)
+		err = fmt.Errorf("resource too big (%v), cannot export any spans", spanlessMsgSize)
+		errorChannel <- err
+		return
 	}
 
 	sizeSoFar := spanlessMsgSize
 
 	agSpanEnvelopes := make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0, len(spans))
+
+	export := func(exp *protoCollectorTraces.SpanExport) error {
+		serializedExport, err := proto.Marshal(exp)
+		if err != nil {
+			return err
+		}
+		exportChannel <- serializedExport
+		return nil
+	}
 
 	for span := range spans {
 		fw4Tag := span.metadata.fw4Tag
@@ -106,25 +120,21 @@ func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error)
 
 		spanMsg, err := createProtoSpan(span, customTag, s.qualifiedTenantId)
 		if err != nil {
-			return nil, err
+			errorChannel <- err
+			return
 		}
-
-		estimatedEnvelopeSize := 0
 
 		serializedClusterSpanEnvelope, err := createSerializedClusterSpanEnvelope(spanMsg, customTag, int32(fw4Tag.PathInfo))
 		if err != nil {
-			return nil, err
+			errorChannel <- err
+			return
 		}
-
-		// Estimate 1 byte for the tag size and up to 4 byte for the varint
-		// encoding the size of the span container.
-		estimatedEnvelopeSize += len(serializedClusterSpanEnvelope) + 1 + 4
 
 		agSpanEnvelope := createAgSpanEnvelope(serializedClusterSpanEnvelope, int64(fw4Tag.ServerID), spanMsg.TraceId)
 
 		// Estimate 1 byte for the tag size and up to 4 byte for the varint
 		// encoding the size of the cluster envelope.
-		estimatedEnvelopeSize += proto.Size(agSpanEnvelope) + 1 + 4
+		estimatedEnvelopeSize := proto.Size(agSpanEnvelope) + 1 + 4
 
 		if sizeSoFar+estimatedEnvelopeSize > cMsgSizeWarn {
 			if minSize := spanlessMsgSize + estimatedEnvelopeSize; minSize > cMsgSizeMax {
@@ -139,6 +149,12 @@ func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error)
 			if len(agSpanEnvelopes) > 0 {
 				s.logger.Debugf("size (%v) exceeds desired size, creating new span export", sizeSoFar+estimatedEnvelopeSize)
 
+				// export the previous spanExport
+				if err := export(spanExport); err != nil {
+					errorChannel <- err
+					return
+				}
+
 				// Create a new SpanExport in which to fit the overhanging span
 				spanExport = &protoCollectorTraces.SpanExport{
 					TenantUUID:     s.tenantUUID,
@@ -146,7 +162,6 @@ func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error)
 					ExportMetaInfo: exportMetaInfo,
 					Resource:       serializedResource,
 				}
-				exports = append(exports, spanExport)
 				agSpanEnvelopes = make([]*protoCollectorTraces.ActiveGateSpanEnvelope, 0)
 				sizeSoFar = spanlessMsgSize
 			}
@@ -158,15 +173,10 @@ func (s *dtSpanSerializer) serializeSpans(spans dtSpanSet) ([]exportData, error)
 		spanExport.Spans = agSpanEnvelopes
 	}
 
-	serializedExports := make([]exportData, 0, len(exports))
-	for _, export := range exports {
-		serializedExport, err := proto.Marshal(export)
-		if err != nil {
-			return nil, err
-		}
-		serializedExports = append(serializedExports, serializedExport)
+	if err := export(spanExport); err != nil {
+		errorChannel <- err
+		return
 	}
-	return serializedExports, nil
 }
 
 func getFirstResource(spans dtSpanSet) (*resource.Resource, error) {

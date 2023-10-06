@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
@@ -81,13 +82,13 @@ func newTestExporter(o testExporterOptions) *testExporter {
 }
 
 // newDtTracerProviderWithTestExporter create Dynatrace Tracer Provider with testExporter
-func newDtTracerProviderWithTestExporter() (*DtTracerProvider, *testExporter) {
+func newDtTracerProviderWithTestExporter(opts ...sdktrace.TracerProviderOption) (*DtTracerProvider, *testExporter) {
 	defaultTextExporterOptions := testExporterOptions{
 		iterationIntervalMs: 500,
 		numIterations:       1,
 	}
 
-	if tp, err := NewTracerProvider(); err == nil {
+	if tp, err := NewTracerProvider(opts...); err == nil {
 		exporter := newTestExporter(defaultTextExporterOptions)
 		tp.processor.exporter = exporter
 
