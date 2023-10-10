@@ -270,6 +270,33 @@ func TestSpanExportWithoutError_LargeResource(t *testing.T) {
 	require.Equal(t, 3, numRequests, "large resource attached to each SpanExport -> split into 3 requests")
 }
 
+func TestSpanExportWithoutError_MidSizedSpans(t *testing.T) {
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	})
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	tracer := createTracer()
+
+	largeString := strings.Repeat("r", 1024*512) // 500 KB
+	_, span1 := tracer.Start(context.Background(), "span1",
+		trace.WithAttributes(attribute.String("large-attr-key", largeString)))
+	_, span2 := tracer.Start(context.Background(), "span2",
+		trace.WithAttributes(attribute.String("large-attr-key", largeString)))
+
+	(span1.(*dtSpan)).metadata.sendState = sendStateSpanEnded
+	(span2.(*dtSpan)).metadata.sendState = sendStateSpanEnded
+
+	spans := makeSpanSet(span1, span2)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, numRequests, "the spans fit individually into 1 export under warning size but 2 exceeds the warning size -> 2 exports")
+}
+
 func makeSpanSet(spans ...trace.Span) dtSpanSet {
 	spanSet := make(dtSpanSet)
 	for _, span := range spans {
