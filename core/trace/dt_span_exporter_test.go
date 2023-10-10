@@ -21,10 +21,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/configuration"
 	"github.com/dynatrace-oss/opentelemetry-exporter-go/core/internal/version"
@@ -143,4 +148,176 @@ func TestDtSpanExporterUpdateHttpClientTimeouts(t *testing.T) {
 	require.Equal(t, exporter.client.Timeout, time.Millisecond*time.Duration(configuration.DefaultRegularExportConnTimeoutMs+configuration.DefaultRegularExportDataTimeoutMs))
 }
 
-// TODO: add unit tests for exporter.export function when Span Enricher and Span Serializer will be implemented
+func TestSpanExportWithoutErrors(t *testing.T) {
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	}))
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	tracer := createTracer()
+
+	_, span1 := tracer.Start(context.Background(), "span1")
+	_, span2 := tracer.Start(context.Background(), "span2")
+	_, span3 := tracer.Start(context.Background(), "span3")
+
+	spans := makeSpanSet(span1, span2, span3)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, numRequests, "spans are small enough so only one export request is expected")
+}
+
+func TestSpanExportWithoutErrors_MultipleExports(t *testing.T) {
+	largeString := strings.Repeat("r", 1024*1024) // 1 MB
+
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	}))
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	tracer := createTracer()
+
+	_, span1 := tracer.Start(context.Background(), "span1",
+		trace.WithAttributes(attribute.String("large-attr-key", largeString)))
+	_, span2 := tracer.Start(context.Background(), "span2")
+	_, span3 := tracer.Start(context.Background(), "span3")
+
+	(span1.(*dtSpan)).metadata.sendState = sendStateSpanEnded
+
+	spans := makeSpanSet(span1, span2, span3)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, numRequests, "since the first span exceeds the warning size, 2 exports must be done")
+}
+
+func TestSpanExportWithoutErrors_DroppedSpans(t *testing.T) {
+	largeString := strings.Repeat("r", 64*1024*1024) // 64 MB
+
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	})
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	tracer := createTracer()
+
+	_, span1 := tracer.Start(context.Background(), "span1",
+		trace.WithAttributes(attribute.String("large-attr-key", largeString)))
+	_, span2 := tracer.Start(context.Background(), "span2")
+	_, span3 := tracer.Start(context.Background(), "span3")
+
+	(span1.(*dtSpan)).metadata.sendState = sendStateSpanEnded
+
+	spans := makeSpanSet(span1, span2, span3)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, numRequests, "the first span exceeds the maximum size, it must be dropped -> 1 export")
+}
+
+func TestSpanExportWithError_ResourceTooBig(t *testing.T) {
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	})
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	largeString := strings.Repeat("r", 64*1024*1024) // 64 MB
+	tracer := createTracer(sdktrace.WithResource(resource.NewSchemaless(attribute.String("large-string", largeString))))
+
+	_, span1 := tracer.Start(context.Background(), "span1")
+	_, span2 := tracer.Start(context.Background(), "span2")
+	_, span3 := tracer.Start(context.Background(), "span3")
+
+	spans := makeSpanSet(span1, span2, span3)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.ErrorContains(t, err, "resource too big")
+	require.Equal(t, 0, numRequests, "the resource is too big -> 0 exports")
+}
+
+func TestSpanExportWithoutError_LargeResource(t *testing.T) {
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	})
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	largeString := strings.Repeat("r", 1024*1024) // 1 MB
+	tracer := createTracer(sdktrace.WithResource(resource.NewSchemaless(attribute.String("large-string", largeString))))
+
+	_, span1 := tracer.Start(context.Background(), "span1")
+	_, span2 := tracer.Start(context.Background(), "span2")
+	_, span3 := tracer.Start(context.Background(), "span3")
+
+	spans := makeSpanSet(span1, span2, span3)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.NoError(t, err)
+	require.Equal(t, 3, numRequests, "large resource attached to each SpanExport -> split into 3 requests")
+}
+
+func TestSpanExportWithoutError_MidSizedSpans(t *testing.T) {
+	numRequests := 0
+	testServer, config := createTestServerAndConfig(func(rw http.ResponseWriter, req *http.Request) {
+		numRequests++
+		rw.Write([]byte(`Ok`)) //nolint:errcheck
+	})
+	defer testServer.Close()
+
+	exporter := newDtSpanExporter(config).(*dtSpanExporterImpl)
+	tracer := createTracer()
+
+	largeString := strings.Repeat("r", 1024*512) // 500 KB
+	_, span1 := tracer.Start(context.Background(), "span1",
+		trace.WithAttributes(attribute.String("large-attr-key", largeString)))
+	_, span2 := tracer.Start(context.Background(), "span2",
+		trace.WithAttributes(attribute.String("large-attr-key", largeString)))
+
+	(span1.(*dtSpan)).metadata.sendState = sendStateSpanEnded
+	(span2.(*dtSpan)).metadata.sendState = sendStateSpanEnded
+
+	spans := makeSpanSet(span1, span2)
+	err := exporter.export(context.Background(), exportTypeForceFlush, spans)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, numRequests, "the spans fit individually into 1 export under warning size but 2 exceeds the warning size -> 2 exports")
+}
+
+func makeSpanSet(spans ...trace.Span) dtSpanSet {
+	spanSet := make(dtSpanSet)
+	for _, span := range spans {
+		spanSet[span.(*dtSpan)] = struct{}{}
+	}
+	return spanSet
+}
+
+func createTestServerAndConfig(handler http.HandlerFunc) (*httptest.Server, *configuration.DtConfiguration) {
+	testServer := httptest.NewServer(handler)
+	config := &configuration.DtConfiguration{
+		ClusterId:                -1234,
+		Tenant:                   "testDtTenant",
+		AgentId:                  10,
+		BaseUrl:                  testServer.URL,
+		AuthToken:                "testDtToken",
+		SpanProcessingIntervalMs: configuration.DefaultSpanProcessingIntervalMs,
+		LoggingDestination:       configuration.LoggingDestination_Stdout,
+		LoggingFlags:             "SpanExporter=true,SpanProcessor=true,TracerProvider=true",
+		RumClientIpHeaders:       nil,
+		DebugAddStackOnStart:     false,
+	}
+	return testServer, config
+}
