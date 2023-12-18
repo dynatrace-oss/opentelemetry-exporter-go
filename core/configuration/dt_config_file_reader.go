@@ -58,7 +58,7 @@ type jsonConfigFileReader struct {
 // ReadConfigFromFile looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
 // Returns an error if the file can't be read or the parsing fails.
 func (j *jsonConfigFileReader) readConfigFromFile() (fileConfig, error) {
-	return j.readConfigFromFileByPath("./dtconfig.json")
+	return j.readConfigFromFileByPath("./serverless_function_source_code/dtconfig.json")
 }
 
 func (j *jsonConfigFileReader) readConfigFromFileByPath(filePath string) (fileConfig, error) {
