@@ -15,6 +15,7 @@
 package configuration
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,16 @@ func TestJsonConfigFileReader_NoErrorForValidFile(t *testing.T) {
 	reader := jsonConfigFileReader{}
 	_, err := reader.readConfigFromFileByPath("./testdata/dtconfig_test_valid.json")
 	assert.NoError(t, err)
+}
+
+func TestJsonConfigFileReader_CustomPath(t *testing.T) {
+	os.Setenv("DT_CONFIG_FILE_PATH", "./testdata/subfolder/dtconfig_test_valid.json")
+	defer os.Unsetenv("DT_CONFIG_FILE_PATH")
+
+	reader := jsonConfigFileReader{}
+	cfg, err := reader.readConfigFromFile()
+	assert.NoError(t, err)
+	assert.Equal(t, "subfolder_config", cfg.Tenant)
 }
 
 func TestJsonConfigFileReader_ErrorForInvalidFile(t *testing.T) {

@@ -64,6 +64,10 @@ func (j *jsonConfigFileReader) readConfigFromFile() (fileConfig, error) {
 }
 
 func configFilePath() string {
+	if configFilePathFromEnv := os.Getenv("DT_CONFIG_FILE_PATH"); configFilePathFromEnv != "" {
+		return configFilePathFromEnv
+	}
+
 	// When running in a Google Cloud Functions Go runtime, we need to find the config file at a different path.
 	// For reference on the K_SERVICE environment variable, see:
 	// https://cloud.google.com/functions/docs/configuring/env-var#runtime_environment_variables_set_automatically
