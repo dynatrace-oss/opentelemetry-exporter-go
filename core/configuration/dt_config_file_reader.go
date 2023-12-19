@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"os"
 )
 
 type fileConfig struct {
@@ -58,7 +59,23 @@ type jsonConfigFileReader struct {
 // ReadConfigFromFile looks for a config file "dtconfig.json" in the current directory and attempts to parse it.
 // Returns an error if the file can't be read or the parsing fails.
 func (j *jsonConfigFileReader) readConfigFromFile() (fileConfig, error) {
-	return j.readConfigFromFileByPath("./dtconfig.json")
+	filePath := configFilePath()
+	return j.readConfigFromFileByPath(filePath)
+}
+
+func configFilePath() string {
+	// When running in a Google Cloud Functions Go runtime, we need to find the config file at a different path.
+	// For reference on the K_SERVICE environment variable, see:
+	// https://cloud.google.com/functions/docs/configuring/env-var#runtime_environment_variables_set_automatically
+	_, inGcf := os.LookupEnv("K_SERVICE")
+	if inGcf {
+		// In the GCF Go runtime, the root directory of your function source code is
+		// beneath the current working directory at ./serverless_function_source_code
+		// See https://cloud.google.com/functions/docs/concepts/execution-environment#memory-file-system
+		return "./serverless_function_source_code/dtconfig.json"
+	}
+
+	return "./dtconfig.json"
 }
 
 func (j *jsonConfigFileReader) readConfigFromFileByPath(filePath string) (fileConfig, error) {
