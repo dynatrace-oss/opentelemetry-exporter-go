@@ -1,3 +1,3 @@
 module github.com/dynatrace-oss/opentelemetry-exporter-go
 
-go 1.15
+go 1.17
