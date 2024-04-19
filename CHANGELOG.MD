@@ -1,3 +1,27 @@
+## 1.289.1 (2024-04-18)
+
+### Fixes
+
+* Update vulnerable dependencies (as a precaution):
+    * golang.org/x/sys to version 0.1.0.
+    * gopkg.in/yaml.v3 to version 3.0.0.
+    * google.golang.org/protobuf to version 1.33.0.
+
+### Features
+
+* Update go version to 1.17
+
+## 1.279.1 (2023-12-21)
+
+### Features
+
+* Update default location for GCF config file to `./serverless_function_source_code/dtconfig.json`
+* Allow specifying config path via DT_CONFIG_FILE_PATH env variable
+* Improve reliability when sending large traces
+* Update semantic constants
+* Add pseudo resource attribute propagation
+* Export encoded link ID
+
 ## 1.267.1 (2023-05-11)
 
 ### Fixes
